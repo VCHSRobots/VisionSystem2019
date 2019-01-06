@@ -1,10 +1,23 @@
 #ui.py: An app made with the grid tkinter ui instead of pack
+
+#Module Imports
 import cv2 as cv
 import tkinter as tk
 from PIL import Image, ImageTk
 import threading
 import imutils
 import numpy as np
+from networktables import NetworkTables as nt
+
+#Local Imports
+import network as localnet #UTP networking library with vision system
+
+#Globals
+ip = "10.44.15.10"
+nt.initialize(ip)
+visiontable = nt.getTable("/vision")
+netsock = localnet.initSocket(ip, localnet.TCP, 5800)
+
 
 class TkWin:
     def __init__(self, name):
@@ -114,18 +127,20 @@ print(top, bottom, left, right, filled)
 """
 
 class Camera:
-    def __init__(self, camnum, root):
+    #Should interact with NetworkTables to sync with robot cameras automatically
+    def __init__(self, camnum, root): #camnum must match up with camnum on robot network
         testcam = cv.VideoCapture(camnum)
         ret, _ = testcam.read()
         if ret:
             self.cam = testcam
+            self.camnum = camnum
             self.active = True
             #TODO: Width and Height are magic numbers: replace them with a good default.
             self.width = 100
             self.height = 100
-            self.color = "RGB"
-            #TODO: Currently unused
-            self.framerate = "auto"
+            self.color = "GRAY"
+            self.framerate = 10
+            updateCamOverNetwork()
             self.label = tk.Label(root)
         else:
             testcam.release()
@@ -134,11 +149,24 @@ class Camera:
     def setOnGrid(self, row, column, cspan, rspan):
         self.label.grid(column=column, row=row, coulmnspan=cspan, rowspan=rspan)
 
-    def upCam(self):
+    def updateCam(self):
         _, frame = self.cam.read()
         img = self.processImg(frame)
         self.label.config(image=img)
         self.label.img = img
+    
+    def updateCamOverNetwork(self):
+        #Updates Networktable data about the specefic camera
+        visiontable.putBoolean("{0}active".format(self.camnum), self.active)
+        visiontable.putNumber("{0}width".format(self.camnum), self.width)
+        visiontable.putNumber("{0}height".format(self.camnum), self.height)
+        visiontable.putString("{0}color".format(self.camnum), self.color)
+        visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
+        
+    def getImgFromNetwork(self):
+        img = localnetwork.getImgUtp(netsock, self.camnum+5800)
+        img = processImg(img)
+        return img
 
     def processImg(self, img):
         #Array Processing

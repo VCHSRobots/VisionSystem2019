@@ -2,7 +2,7 @@
 #11/17/2018 HP
 
 #Module Imports
-import time #Timing parameters yet to be implemented
+import time
 import socket
 import pickle
 import imutils
@@ -26,17 +26,15 @@ def setupSocket(ip, socktype, port):
     sock.listen()
     return sock
 
-def exportImg(camera, sock, port=None, width = dwidth, height = dheight, color = RGB):
+def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RGB):
     #Reads, pickles, and exports an image from the OpenCV camera
     _, frame = camera.read()
     frame = processImg(frame, width, height, color)
     frame = pickle.dumps(frame)
-    if port == None:
-        sock.sendall(frame)
-    else:
-        sock.sendto(frame, port)
+    sock.sendto(labledframe, camnum+5800)
 
 def processImg(img, width = dwidth, height = dheight, color = RGB):
+    #Processes an image in numpy array format to the desired specefications
     img = imutils.resize(width = width, height = height)
     img = cv.cvtcolor(img, color)
     return img
@@ -78,14 +76,14 @@ def pollCamVars(camnum, table):
     width = table.getInt("{0}width".format(camnum), dwidth)
     height = table.getInt("{0}height".format(camnum), dheight)
     color = table.getString("{0}color".format(camnum), "RGB")
-    timeint = table.getInt("{0}color".format(camnum), 10) #Finds time interval for each camera. Defaults to 10ms
+    framerate = table.getInt("{0}framerate".format(camnum), 10) #Finds time interval for each camera. Defaults to 20/s
     if color == "RGB":
         color = RGB
     elif color == "GRAY":
         color = GRAY
     else:
         color = RGB
-    return active, width, height, color
+    return active, width, height, color, framerate
 
 def exportStream(camnum, ip, socktype = UTP, port = 1024):
     #Starts a stream of pickled images from the camera connected to external port camnum in the specified ip and network port
@@ -99,14 +97,18 @@ def exportStream(camnum, ip, socktype = UTP, port = 1024):
 
 def exportManagedStream(camnum, ip, socktype = UTP, port = 1024):
     timepassed = [] #The time passed since the last frame update for each camera
-    sock = setupSocket(ip, socktype, port)
+    #sock = setupSocket(ip, socktype, port)
+    socks = 
     camactive = False
     cams = scanForCams()
-    table = nt.getTable("/Vision")
+    table = setupNetworkTable(ip, "/vision")
+    starttime = time.perf_counter()
+    timerecords = [[starttime, 0]] * len(cams) #Makes a records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
     while True:
-        for num, cam in cams:
-            active, width, height, color, timeint = pollCamVars(camnum, table)
-            if active:
+        for num, cam in enumerate(cams):
+            active, width, height, color, framerate = pollCamVars(num, table)
+            timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
+            if active and timerecords[num][1] > 1/framerate: #If camera is active and framerate time has passed
                 exportImg(cam, sock, port, width, height, color)
         if cv.waitKey(1) == 0:
             break
