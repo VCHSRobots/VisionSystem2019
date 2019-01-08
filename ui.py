@@ -13,7 +13,7 @@ from networktables import NetworkTables as nt
 import network as localnet #UTP networking library with vision system
 
 #Globals
-ip = "10.44.15.10"
+ip = "10.44.15.1"
 nt.initialize(ip)
 visiontable = nt.getTable("/vision")
 netsock = localnet.initSocket(ip, localnet.TCP, 5800)
@@ -165,7 +165,13 @@ class Camera:
         
     def getImgFromNetwork(self):
         img = localnetwork.getImgUtp(netsock, self.camnum+5800)
-        img = processImg(img)
+        img = processIncomingImg(img)
+        return img
+    
+    def processIncomingImg(self, img):
+        img = pickle.loads(img)
+        img = Image.fromarray(img)
+        img = ImageTK.PhotoImage(image)
         return img
 
     def processImg(self, img):
@@ -202,6 +208,27 @@ def setEntriesOnGrid(win, coulmnrange):
 
 def setItemsOnGrid(win, coulmnrange):
     pass
+
+def processGuiMap(guimap):
+    """
+    Places items on grid based on a dimensioned array with integers standing for different components
+    """
+    """
+    EX:
+    [
+    [0, 0, 1, 1, 1
+    0, 0, 1, 1, 1
+    0, 0, 1, 1, 1
+    ]
+    {1: CameraObject}]
+    would place CameraObject on column 2 row 1 with a columnspan of 3 and rowspan of 3
+    """
+    pass
+
+def gridFromCorners(inter, item, corners):
+    """
+    Places an item on interface inter based on the location of the four corners given in (topleft, bottomleft, topright, bottomright) order
+    """
 
 win = TkWin("Hello")
 for num in range(4):
