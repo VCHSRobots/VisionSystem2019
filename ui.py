@@ -22,7 +22,6 @@ visiontable = nt.getTable("/vision")
 netsock = localnet.initSocket(ip, localnet.TCP, 5800)
 """
 
-
 class TkWin:
     def __init__(self, name):
         self.name = name
@@ -37,10 +36,21 @@ class TkWin:
         self.active = True
         #List of all filled points on the window's grid
         self.filled = []
+        self.threadloop = null
+
+    def runWin(self):
+        thread = threading.Thread(target=self.threadLoop, args=())
+        self.root.mainloop()
+
+    def setThreadLoop(self, func):
+        self.threadloop = func
 
     def threadLoop(self):
+        self.threadloop()
+        activecams = getActiveCams()
         while self.active:
             for camera in self.cameras:
+                camera.updateCamOverNetwork()
                 if camera.active:
                     camera.upCam()
             
@@ -133,7 +143,10 @@ class TkWin:
             if self.isFilled(point):
                 return True
         return False
-            
+
+def null(_):
+    pass
+           
 def findCornerPoints(column, row, cspan=1, rspan=1):
     top = row
     bottom = row+rspan-1
@@ -178,6 +191,7 @@ class Camera:
     def updateImgOnLabel(self):
         #Places an image from the networked camera on the label
         image = self.processIncomingImage()
+        label.configure(image=image)
         label['image'] = image
 
     def setOnGrid(self, row, column, cspan, rspan):
@@ -282,6 +296,11 @@ win.addButton("Start", win.threadloop)
 win.addButton("Stop", win.killLoop)
 win.addEntry("Cameranum", int, 0)
 """
+
+def testLoop():
+    inter = TkWin("Test")
+    inter.addCam(0)
+
 
 labelgrid = [[[0, 0, 1, 1],
             [0, 0, 1, 1],

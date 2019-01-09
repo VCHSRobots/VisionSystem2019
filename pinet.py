@@ -6,7 +6,7 @@ import time
 import socket
 import pickle
 import imutils
-#import somecompressionlib
+import zlib
 import cv2 as cv
 import numpy as np
 from networktables import NetworkTables as nt
@@ -26,10 +26,11 @@ def setupSocket(ip, socktype, port):
     sock.listen()
     return sock
 
-def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RGB):
+def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RGB, compression = 6):
     #Reads, pickles, and exports an image from the OpenCV camera
     _, frame = camera.read()
     frame = processImg(frame, width, height, color)
+    frame = zlib.compress(lib, compression)
     frame = pickle.dumps(frame)
     sock.sendto(labledframe, camnum+5800)
 
@@ -77,13 +78,14 @@ def pollCamVars(camnum, table):
     height = table.getInt("{0}height".format(camnum), dheight)
     color = table.getString("{0}color".format(camnum), "RGB")
     framerate = table.getInt("{0}framerate".format(camnum), 10) #Finds time interval for each camera. Defaults to 20/s
+    compression = table.getInt("{0}compression".format(camnum), 6)
     if color == "RGB":
         color = RGB
     elif color == "GRAY":
         color = GRAY
     else:
         color = RGB
-    return active, width, height, color, framerate
+    return active, width, height, color, framerate, compression
 
 def exportStream(camnum, ip, socktype = UTP, port = 1024):
     #Starts a stream of pickled images from the camera connected to external port camnum in the specified ip and network port
@@ -96,19 +98,16 @@ def exportStream(camnum, ip, socktype = UTP, port = 1024):
             break
 
 def exportManagedStream(camnum, ip, socktype = UTP, port = 1024):
-    timepassed = [] #The time passed since the last frame update for each camera
-    #sock = setupSocket(ip, socktype, port)
-    socks = 
-    camactive = False
-    cams = scanForCams()
+    sock = setupSocket(ip, socktype, port)
+    cams = scanForCams(numrange=(0,10))
     table = setupNetworkTable(ip, "/vision")
     starttime = time.perf_counter()
     timerecords = [[starttime, 0]] * len(cams) #Makes a records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
     while True:
         for num, cam in enumerate(cams):
-            active, width, height, color, framerate = pollCamVars(num, table)
+            active, width, height, color, framerate, compression = pollCamVars(num, table)
             timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
             if active and timerecords[num][1] > 1/framerate: #If camera is active and framerate time has passed
-                exportImg(cam, sock, port, width, height, color)
+                exportImg(cam, sock, port, width, height, color, compression)
         if cv.waitKey(1) == 0:
             break
