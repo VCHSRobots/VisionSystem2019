@@ -1,4 +1,4 @@
-#ui.py: An app made with the grid tkinter ui instead of pack
+#labels.py: Classes and functions to manage tkinter items and their different behaviors
 #1/7/2019 HP
 
 #Module Imports
@@ -21,7 +21,7 @@ netsock = localnet.initSocket(ip, localnet.TCP, 5800)
 class Camera:
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
     def __init__(self, camnum, root):
-        #Camnum must match up with camnum on robot network
+        #Camnum will match up with camnum on robot network
         testcam = pinet.makeCam(camnum)
         if testcam:
             self.cam = testcam
