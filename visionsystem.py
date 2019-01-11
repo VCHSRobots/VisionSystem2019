@@ -2,6 +2,7 @@
 #HP 1/8/2019
 
 import tkwin
+from networktables import NetworkTables as nt
 
 ip = "10.44.15.1"
 nt.initialize(ip)

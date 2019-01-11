@@ -2,9 +2,11 @@
 #1/8/2019 HP
 
 #Module Imports
-import tkinter as tk
 import threading
+import networktables
 import re #Used for string processing
+import tkinter as tk
+from networktables import NetworkTables as nt
 
 #Local Imports
 import labels
