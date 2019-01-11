@@ -117,6 +117,13 @@ class TkWin:
 
     def killLoop(self):
         self.active = False
+        
+    def pollForCams(self, camrange):
+        """
+        Checks for active cams on the network
+        """
+        for num in range(camrange):
+            self.addCam(num)
 
 def null():
     pass

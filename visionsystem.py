@@ -8,6 +8,9 @@ nt.initialize(ip)
 visiontable = nt.getTable("/vision")
 
 def testLoop(self):
+    """
+    Thread fucntion to be called by the tkinter class
+    """
     while True:
         while self.active:
             activecams = getActiveCams(len(self.cameras))
@@ -15,12 +18,18 @@ def testLoop(self):
                 self.cameras[activeind].updateImgOnLabel()
 
 def testSystem():
+    """
+    A simple test of the vision system involving only one camera
+    """
     win = tkwin.TkWin("Test")
     win.addCam(0)
     win.setThreadLoop(testLoop)
     win.runWin()
 
-def activecams(numofcams):
+def getActiveCams(self, numrange):
+    """
+    Polls NetworkTables to check which cameras are active
+    """
     actives = []
     for num in range(numofcams):
         isactive = visiontable.getBoolean("camera{0}".format(num), False)

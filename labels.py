@@ -22,7 +22,7 @@ class Camera:
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
     def __init__(self, camnum, root):
         #Camnum will match up with camnum on robot network
-        testcam = pinet.makeCam(camnum)
+        testcam = localnet.pollCamSocket(camnum)
         if testcam:
             self.cam = testcam
             self.camnum = camnum
@@ -82,7 +82,7 @@ class Camera:
         img = Image.fromarray(img)
         img = ImageTK.PhotoImage(image)
         return img
-
+    
 class LocalCamera:
     """
     All functions matching with Camera share identical documentation
