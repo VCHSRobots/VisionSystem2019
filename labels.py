@@ -1,4 +1,4 @@
-#ui.py: An app made with the grid tkinter ui instead of pack
+#labels.py: Classes and functions to manage tkinter items and their different behaviors
 #1/7/2019 HP
 
 #Module Imports
@@ -21,8 +21,8 @@ netsock = localnet.initSocket(ip, localnet.TCP, 5800)
 class Camera:
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
     def __init__(self, camnum, root):
-        #Camnum must match up with camnum on robot network
-        testcam = pinet.makeCam(camnum)
+        #Camnum will match up with camnum on robot network
+        testcam = localnet.pollCamSocket(camnum)
         if testcam:
             self.cam = testcam
             self.camnum = camnum
@@ -40,16 +40,24 @@ class Camera:
             self.active = False
     
     def updateImgOnLabel(self):
+        """
+        Places the latest image from the socket stream port aligning with the camnum
+        """
         #Places an image from the networked camera on the label
         image = self.processIncomingImage()
         label.configure(image=image)
         label['image'] = image
 
     def setOnGrid(self, row, column, cspan, rspan):
+        """
+        Sets the camera on the user interface
+        """
         self.label.grid(column=column, row=row, coulmnspan=cspan, rowspan=rspan)
     
     def updateCamOverNetwork(self):
-        #Updates Networktable data about the specefic camera
+        """
+        Updates Networktable data about the camera
+        """
         visiontable.putBoolean("{0}active".format(self.camnum), self.active)
         visiontable.putNumber("{0}width".format(self.camnum), self.width)
         visiontable.putNumber("{0}height".format(self.camnum), self.height)
@@ -58,18 +66,27 @@ class Camera:
         visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
         
     def getImgFromNetwork(self):
+        """
+        Polls the latest image from the network socket which corresponds with the camera number
+        """
         img = localnetwork.getImgUtp(netsock, self.camnum+5800)
         img = processIncomingImg(img)
         return img
     
     def processIncomingImg(self, img):
+        """
+        Converts an image to the TKInter usable format
+        """
         img = pickle.loads(img)
         img = zlib.decompress(img)
         img = Image.fromarray(img)
         img = ImageTK.PhotoImage(image)
         return img
-
+    
 class LocalCamera:
+    """
+    All functions matching with Camera share identical documentation
+    """
     def __init__(self, camnum, root):
         testcam = cv.VideoCapture(camnum)
         ret, _ = testcam.read()
@@ -108,14 +125,14 @@ class LocalCamera:
         img = ImageTK.PhotoImage(image)
         return img
 
-
 class Entry:
-    def __init__(self, root, name, convtype, defaultval):
+    def __init__(self, root, name, defaultval):
         self.entry = tk.Entry(root)
         self.var = tk.StringVar()
         self.value = defaultval
-        #The type to convert this entry's values to on updates
-        self.type = convtype
 
     def updateVal(self):
-        self.value = self.type(self.var.get())
+        """
+        Recieves any input from the user-input field and puts it in self.var as a string
+        """
+        self.value = str(self.var.get())

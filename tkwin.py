@@ -30,17 +30,26 @@ class TkWin:
         self.threadloop = null
 
     def runWin(self):
+        """
+        Initiates the tkinter window while running the instance's set thread function
+        """
         thread = threading.Thread(target=self.threadLoop, args=(self))
         thread.start()
         self.root.mainloop()
 
     def setThreadLoop(self, func):
+        """
+        Sets the function to be run when self.runWin is called
+        """
         self.threadloop = func
 
     def threadLoop(self):
         self.threadloop()
 
     def addCam(self, camnum):
+        """
+        Tries to add a remote camera to the window; returns False if it fails
+        """
         camera = labels.Camera(camnum, self.root)
         if camera.active:
             self.cameras.append(camera)
@@ -49,9 +58,15 @@ class TkWin:
             return False
         
     def setCamColor(self, camind, color):
+        """
+        Sets the color of the camera's socket output
+        """
         self.localcameras[camind].color = color
     
     def addLocalCam(self, camnum):
+        """
+        Local variant of addCam
+        """
         camera = labels.LocalCamera(camnum, self.root)
         if camera.active:
             self.localcameras.append(camera)
@@ -60,27 +75,32 @@ class TkWin:
             return False
         
     def setLocalCamColor(self, camind, color):
+        """
+        Local variant of setCamColor
+        """
         self.cameras[camind].color = color
 
     def addButton(self, text, command):
+        """
+        Adds a button to the class registry
+        """
         self.buttons.append(tk.Button(root, text=text, command=command))
 
     def addEntry(self, name, convtype, defaultval=None):
+        """
+        Adds a user entry field to the class registry
+        """
         entry = labels.Entry(name, convtype, defaultval)
         self.entries[name] = entry
     
     def processGuiMap(self, guimap):
         """
         Places items on grid based on a dimensioned array with integers standing for different components
-        """
-        """
         EX:
-        [
-        [[0, 0, 1, 1, 1]
+        [[[0, 0, 1, 1, 1]
         [0, 0, 1, 1, 1]
         [0, 0, 1, 1, 1]],
-        {1: "camera1"}
-        ]
+        {1: "camera1"}]
         would place the first camera the window recognizes on column 2 row 1 with a columnspan of 3 and rowspan of 3
         """
         labelspans = findLabelSpans(guimap)
@@ -99,6 +119,13 @@ class TkWin:
 
     def killLoop(self):
         self.active = False
+        
+    def pollForCams(self, camrange):
+        """
+        Checks for active cams on the network
+        """
+        for num in range(camrange):
+            self.addCam(num)
 
 def null():
     pass
