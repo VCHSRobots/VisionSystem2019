@@ -7,7 +7,7 @@ import socket
 import pickle
 import imutils
 import zlib
-import cv2 as cv
+import cv2
 import numpy as np
 from networktables import NetworkTables as nt
 
@@ -17,7 +17,7 @@ UTP = socket.SOCK_DGRAM
 RGB = cv2.BGR2RGB
 GRAY = cv2.BGR2GRAY
 dwidth = 400
-dhegiht = 400
+dheight = 400
 
 def setupSocket(ip, socktype, port):
     """
@@ -34,23 +34,23 @@ def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RG
     """
     _, frame = camera.read()
     frame = processImg(frame, width, height, color)
-    frame = zlib.compress(lib, compression)
+    frame = zlib.compress(frame, compression)
     frame = pickle.dumps(frame)
-    sock.sendto(labledframe, camnum+5800)
+    sock.sendto(frame, camnum+5800)
 
 def processImg(img, width = dwidth, height = dheight, color = RGB):
     """
     Processes an image in numpy array format to the desired specefications
     """
     img = imutils.resize(width = width, height = height)
-    img = cv.cvtcolor(img, color)
+    img = cv2.cvtcolor(img, color)
     return img
 
 def makeCam(camnum):
     """
     Tries to make a camera, fails if it doesn't work
     """
-    camera = cv.VideoCapture(camnum)
+    camera = cv2.VideoCapture(camnum)
     ret, _ = camera.read()
     if ret:
         return camera
@@ -109,11 +109,10 @@ def exportStream(camnum, ip, socktype = UTP, port = 1024):
     Starts a stream of pickled images from the camera connected to external port camnum in the specified ip and network port
     """
     sock = setupSocket(ip, socktype, port)
-    camactive = False
     cam = findCam()
     while True:
         exportImg(cam, sock, port)
-        if cv.waitKey(1) == 0:
+        if cv2.waitKey(1) == 0:
             break
 
 def exportManagedStream(ip, numrange = (0, 10), socktype = UTP, port = 1024):
@@ -131,8 +130,8 @@ def exportManagedStream(ip, numrange = (0, 10), socktype = UTP, port = 1024):
             active, width, height, color, framerate, compression = pollCamVars(num, table)
             timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
             if active and timerecords[num][1] > 1/framerate: #If camera is active and framerate time has passed
-                exportImg(cams[num], camnum, sock, width, height, color, compression)
-        if cv.waitKey(1) == 0:
+                exportImg(cams[num], num, sock, width, height, color, compression)
+        if cv2.waitKey(1) == 0:
             break
 
 exportManagedStream(ip="10.44.15.1")
