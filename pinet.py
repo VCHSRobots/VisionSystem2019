@@ -16,12 +16,13 @@ TCP = socket.SOCK_STREAM
 UTP = socket.SOCK_DGRAM
 RGB = cv2.BGR2RGB
 GRAY = cv2.BGR2GRAY
+ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
 
 def setupSocket(ip, socktype, port):
     """
-    Sets up and returns a ready to use socket bound to the ip and port arguments
+    Sets up and returns a ready to use socket bound to the ip and port arguments. Only needed for tcp
     """
     sock = socket.socket(socket.AF_INET, socktype)
     sock.bind((ip, port))
@@ -36,7 +37,7 @@ def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RG
     frame = processImg(frame, width, height, color)
     frame = zlib.compress(frame, compression)
     frame = pickle.dumps(frame)
-    sock.sendto(frame, camnum+5800)
+    sock.sendto(frame, (ip, camnum+5800))
 
 def processImg(img, width = dwidth, height = dheight, color = RGB):
     """

@@ -4,7 +4,8 @@
 #Module Imports
 import imutils
 import zlib
-import cv2 as cv
+import pickle
+import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
 from networktables import NetworkTables as nt
@@ -13,10 +14,9 @@ from networktables import NetworkTables as nt
 import network as localnet #UTP networking library with vision system
 
 #Globals
-ip = "10.44.15.1"
+ip = "10.44.15."
 nt.initialize(ip)
 visiontable = nt.getTable("/vision")
-netsock = localnet.initSocket(ip, localnet.TCP, 5800)
 
 class Camera:
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
@@ -33,7 +33,7 @@ class Camera:
             self.color = "GRAY"
             self.framerate = 10
             self.compression = 6
-            updateCamOverNetwork()
+            self.updateCamOverNetwork()
             self.label = tk.Label(root)
         else:
             del testcam
@@ -44,9 +44,9 @@ class Camera:
         Places the latest image from the socket stream port aligning with the camnum
         """
         #Places an image from the networked camera on the label
-        image = self.processIncomingImage()
-        label.configure(image=image)
-        label['image'] = image
+        image = self.getImgFromNetwork()
+        self.label.configure(image=image)
+        self.label['image'] = image
 
     def setOnGrid(self, row, column, cspan, rspan):
         """
@@ -69,8 +69,9 @@ class Camera:
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
-        img = localnetwork.getImgUtp(netsock, self.camnum+5800)
-        img = processIncomingImg(img)
+        #TODO: Do something with the sender argument of getImgUtp
+        img, sender = localnet.getImgUtp(self.camnum)
+        img = self.processIncomingImg(img)
         return img
     
     def processIncomingImg(self, img):
@@ -80,7 +81,7 @@ class Camera:
         img = pickle.loads(img)
         img = zlib.decompress(img)
         img = Image.fromarray(img)
-        img = ImageTK.PhotoImage(image)
+        img = ImageTK.PhotoImage(img)
         return img
     
 class LocalCamera:
@@ -88,7 +89,7 @@ class LocalCamera:
     All functions matching with Camera share identical documentation
     """
     def __init__(self, camnum, root):
-        testcam = cv.VideoCapture(camnum)
+        testcam = cv2.VideoCapture(camnum)
         ret, _ = testcam.read()
         if ret:
             self.cam = testcam
@@ -116,13 +117,13 @@ class LocalCamera:
     def processImg(self, img):
         #Array Processing
         if self.color == "RGB":
-            img = cv.cvtcolor(img, cv.BGR2RGB)
+            img = cv2.cvtcolor(img, cv2.BGR2RGB)
         elif self.color == "GRAY":
-            img = cv.cvtcolor(img, cv.BGR2GRAY)
+            img = cv2.cvtcolor(img, cv2.BGR2GRAY)
         img = imutils.resize(width=self.width, height=self.height)
         #Conversions
         img = Image.fromarray(img)
-        img = ImageTK.PhotoImage(image)
+        img = ImageTK.PhotoImage(img)
         return img
 
 class Entry:

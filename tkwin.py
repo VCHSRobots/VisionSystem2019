@@ -84,7 +84,7 @@ class TkWin:
         """
         Adds a button to the class registry
         """
-        self.buttons.append(tk.Button(root, text=text, command=command))
+        self.buttons.append(tk.Button(self.root, text=text, command=command))
 
     def addEntry(self, name, convtype, defaultval=None):
         """
@@ -115,7 +115,7 @@ class TkWin:
             label = self.entries[labelnum]
         elif labeltype.lower() == "textbox":
             label = self.textboxes[labelnum]
-        label.grid(column = objspans[num][0], row = objspans[num][2], columnspan = objspans[num][1]-objspans[num][0], rowspan = objspans[num][3]-objspans[num][2])
+        label.grid(column = labelspans[num][0], row = labelspans[num][2], columnspan = objspans[num][1]-objspans[num][0], rowspan = objspans[num][3]-objspans[num][2])
 
     def killLoop(self):
         self.active = False
@@ -129,3 +129,24 @@ class TkWin:
 
 def null():
     pass
+
+def findLabelSpans(guimap):
+    labelspans = {} #{num: (firstcolumn, lastcolumn, firstrow, lastrow)}
+    firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
+    numencountered = False
+    for num in guimap[1]:
+        for ind, row in enumerate(guimap[0]):
+            print(row)
+            if num in row:
+                if not numencountered:
+                    firstrow = ind
+                    firstcolumn = row.index(num)
+                    lastcolumn = len(row)-row[::-1].index(num)-1
+                    numencountered = True
+                    continue
+                elif numencountered:
+                    lastrow = ind
+                    break
+        labelspans[num] = (firstcolumn, lastcolumn, firstrow, lastrow)
+        numencountered = False
+    return labelspans
