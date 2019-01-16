@@ -14,8 +14,8 @@ from networktables import NetworkTables as nt
 #Globals
 TCP = socket.SOCK_STREAM
 UTP = socket.SOCK_DGRAM
-RGB = cv2.BGR2RGB
-GRAY = cv2.BGR2GRAY
+RGB = cv2.COLOR_BGR2RGB
+GRAY = cv2.COLOR_BGR2GRAY
 ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
