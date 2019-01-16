@@ -87,7 +87,7 @@ def setupNetworkTable(ip, tablename = "/vision"):
     """
     Sets up networktable client with the specified ip and returns the specified table
     """
-    ip = "10.44.15.41"
+    ip = "10.44.15.1"
     nt.initialize(ip)
     table = nt.getTable(tablename)
     return table
@@ -130,7 +130,7 @@ def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype
     """
     #cams = scanForCams(numrange=(0,10)) #Gets a dict of avalible cams within the number range 
     starttime = time.perf_counter()
-    timerecords = [[starttime, 0]] * len(cams) #Makes a records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
+    timerecords = [[starttime, 0]] * len(cams) #Makes records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
     while True:
         for num in cams:
             active, width, height, color, framerate, compression = pollCamVars(num, table)
@@ -169,8 +169,10 @@ def test(time=180):
     table = setupNetworkTable(ip, "/vision")
     #Scans for active cameras and posts them to NetworkTables
     cams = scanForCams(numrange=(0,10))
-    table.putBoolean("0isactive", True)
-    exportImage(cams[camnum], camnum, socket = sock, table = table)
+    for camnum in cams:
+        table.putBoolean("{0}isactive".format(camnum), True)
+        print("Camnum: ", camnum)
+        exportImage(cams[camnum], camnum, socket = sock, table = table)
     #Exports vision system stream
     exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
 

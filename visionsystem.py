@@ -5,8 +5,8 @@ import tkwin
 import json
 from networktables import NetworkTables as nt
 
-ip = "10.44.15.1"
-nt.initialize(ip)
+ntip = "10.44.15.1"
+nt.initialize(ntip)
 visiontable = nt.getTable("/vision")
 
 def testLoop(self):
@@ -24,7 +24,9 @@ def testSystem():
     A simple test of the vision system involving only one camera
     """
     win = tkwin.TkWin("Test")
-    win.addCam(0)
+    camnums = getActiveCams(10)
+    for camnum in camnums:
+        win.addCam(0)
     win.setThreadLoop(testLoop)
     guifile = open("test.gui")
     guimap = json.load(guifile)
@@ -38,7 +40,7 @@ def getActiveCams(self, numrange):
     """
     actives = []
     for num in range(numrange):
-        isactive = visiontable.getBoolean("camera{0}".format(num), False)
+        isactive = visiontable.getBoolean("{0}isactive".format(num), False)
         if isactive:
             actives.append(num)
     return actives
