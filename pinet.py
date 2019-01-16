@@ -20,16 +20,17 @@ ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
 
-def setupSocket(ip, socktype, port):
+def setupServerSocket(socktype = UTP):
     """
     Sets up and returns a ready to use socket bound to the ip and port arguments. Only needed for tcp
     """
     sock = socket.socket(socket.AF_INET, socktype)
-    sock.bind((ip, port))
-    sock.listen()
+    #Not Complete Yet
+    #if socktype == TCP:
+    #   sock.listen()
     return sock
 
-def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RGB, compression = 6):
+def exportImage(camera, camnum, socket, width = dwidth, height = dheight, color = RGB, compression = 6, table=None):
     """
     Reads, pickles, and exports an image from the OpenCV camera
     """
@@ -37,7 +38,10 @@ def exportImg(camera, camnum, sock, width = dwidth, height = dheight, color = RG
     frame = processImg(frame, width, height, color)
     frame = zlib.compress(frame, compression)
     frame = pickle.dumps(frame)
-    sock.sendto(frame, (ip, camnum+5800))
+    size = sock.sendto(frame, (ip, camnum+5800))
+    if table:
+        table.putNumber("{0}size".format(camnum), size)
+    
 
 def processImg(img, width = dwidth, height = dheight, color = RGB):
     """
@@ -79,10 +83,11 @@ def scanForCams(numrange = (0, 100)):
                 cams[num] = cam
     return cams
 
-def setupNetworkTable(ip, tablename = "/"):
+def setupNetworkTable(ip, tablename = "/vision"):
     """
     Sets up networktable client with the specified ip and returns the specified table
     """
+    ip = "10.44.15.41"
     nt.initialize(ip)
     table = nt.getTable(tablename)
     return table
@@ -92,11 +97,11 @@ def pollCamVars(camnum, table):
     Recieves NetworkTables variables for the specified camera number
     """
     active = table.getBoolean("{0}isactive".format(camnum), False)
-    width = table.getInt("{0}width".format(camnum), dwidth)
-    height = table.getInt("{0}height".format(camnum), dheight)
+    width = table.getNumber("{0}width".format(camnum), dwidth)
+    height = table.getNumber("{0}height".format(camnum), dheight)
     color = table.getString("{0}color".format(camnum), "RGB")
-    framerate = table.getInt("{0}framerate".format(camnum), 10) #Finds time interval for each camera. Defaults to 20/s
-    compression = table.getInt("{0}compression".format(camnum), 6)
+    framerate = table.getNumber("{0}framerate".format(camnum), 10) #Finds time interval for each camera. Defaults to 20/s
+    compression = table.getNumber("{0}compression".format(camnum), 6)
     if color == "RGB":
         color = RGB
     elif color == "GRAY":
@@ -105,25 +110,25 @@ def pollCamVars(camnum, table):
         color = RGB
     return active, width, height, color, framerate, compression
 
+"""
+#Test Code
 def exportStream(camnum, ip, socktype = UTP, port = 1024):
-    """
+    
     Starts a stream of pickled images from the camera connected to external port camnum in the specified ip and network port
-    """
+    
     sock = setupSocket(ip, socktype, port)
     cam = findCam()
     while True:
         exportImg(cam, sock, port)
         if cv2.waitKey(1) == 0:
             break
+"""
 
-def exportManagedStream(ip, numrange = (0, 10), socktype = UTP, port = 1024):
+def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
     """
     Exports a stream of images with each camera individually managed by its NetworkTables values
     """
-    sock = setupSocket(ip, socktype, port)
-    cams = scanForCams(numrange=(0,10)) #Gets a dict of avalible cams within the number range 
-    #TODO: Make cams a dict as opposed to a list
-    table = setupNetworkTable(ip, "/vision")
+    #cams = scanForCams(numrange=(0,10)) #Gets a dict of avalible cams within the number range 
     starttime = time.perf_counter()
     timerecords = [[starttime, 0]] * len(cams) #Makes a records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
     while True:
@@ -131,8 +136,41 @@ def exportManagedStream(ip, numrange = (0, 10), socktype = UTP, port = 1024):
             active, width, height, color, framerate, compression = pollCamVars(num, table)
             timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
             if active and timerecords[num][1] > 1/framerate: #If camera is active and framerate time has passed
-                exportImg(cams[num], num, sock, width, height, color, compression)
+                exportImage(camera=cams[num], camnum=num, socket=sock, width=width, height=height, color=color, compression=compression, table=table)
         if cv2.waitKey(1) == 0:
+            sock.close()
             break
+        if timeout:
+            if time.perf_counter()-starttime > timeout:
+                sock.close()
+                break
 
-exportManagedStream(ip="10.44.15.1")
+def runMatch(time=180):
+    sock = setupServerSocket(socktype=socktype)
+    #Sets up networktables
+    table = setupNetworkTable(ip, "/vision")
+    #Scans for active cameras and posts them to NetworkTables
+    cams = scanForCams(numrange=(0,10))
+    for camnum in cams:
+        table.putBoolean("{0}isactive".format(camnum), True)
+        exportImage(cams[camnum], camnum, socket = sock, table = table)
+    #Opens bound socket and listens for start signal
+    listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    listener.bind(("10.44.15.59", 5800))
+    listener.recv(1) #Listens for any byte
+    listener.close()
+    #Exports vision system stream
+    exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
+
+def test(time=180):
+    camnum = 0
+    sock = setupServerSocket()
+    #Sets up networktables
+    table = setupNetworkTable(ip, "/vision")
+    #Scans for active cameras and posts them to NetworkTables
+    cams = scanForCams(numrange=(0,10))
+    table.putBoolean("0isactive", True)
+    exportImage(cams[camnum], camnum, socket = sock, table = table)
+    #Exports vision system stream
+    exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
+
