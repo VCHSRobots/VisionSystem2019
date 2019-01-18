@@ -6,8 +6,8 @@ import json
 import socket
 from networktables import NetworkTables as nt
 
-ip = "10.44.15.41"
-nt.initialize(ip)
+ntip = "10.44.15.1"
+nt.initialize(ntip)
 visiontable = nt.getTable("/vision")
 
 def testLoop(self):
@@ -25,8 +25,9 @@ def testSystem():
     A simple test of the vision system involving only one camera
     """
     win = tkwin.TkWin("Test")
-    #sendStartSignal()
-    win.addCam(0)
+    camnums = getActiveCams(10)
+    for camnum in camnums:
+        win.addCam(0)
     win.setThreadLoop(testLoop)
     guifile = open("test.gui")
     print(win.cameras)
