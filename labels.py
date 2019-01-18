@@ -2,19 +2,21 @@
 #1/7/2019 HP
 
 #Module Imports
+import socket
 import imutils
 import zlib
 import pickle
 import cv2
 import tkinter as tk
-from PIL import Image, ImageTk
+from PIL import Image
+from PIL import ImageTk
 from networktables import NetworkTables as nt
 
 #Local Imports
 import network as localnet #UTP networking library with vision system
 
 #Globals
-ip = "10.44.15."
+ip = "10.44.15.41"
 nt.initialize(ip)
 visiontable = nt.getTable("/vision")
 
@@ -22,23 +24,23 @@ class Camera:
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
     def __init__(self, camnum, root):
         #Camnum will match up with camnum on robot network
-        testcam = localnet.pollCamSocket(camnum)
-        if testcam:
-            self.cam = testcam
-            self.camnum = camnum
-            self.active = True
-            #TODO: Width and Height are magic numbers: replace them with a good default.
-            self.width = 100
-            self.height = 100
-            self.color = "GRAY"
-            self.framerate = 10
-            self.compression = 6
-            self.updateCamOverNetwork()
-            self.label = tk.Label(root)
-        else:
-            del testcam
-            self.active = False
-    
+        self.root = root
+        self.camnum = camnum
+        self.active = True
+        #TODO: Width and Height are magic numbers: replace them with a good default.
+        self.width = 100
+        self.height = 100
+        self.color = "GRAY"
+        self.framerate = 10
+        self.compression = 6
+        self.updateCamOverNetwork()
+        self.label = tk.Label(root)
+        #Makes a listener socket bound to this specific camera
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((ip, camnum+5800))
+        #Finds the size of the image to be recieved from the network
+        self.size = visiontable.getNumber("{0}size", 0)
+        
     def updateImgOnLabel(self):
         """
         Places the latest image from the socket stream port aligning with the camnum
@@ -70,7 +72,7 @@ class Camera:
         Polls the latest image from the network socket which corresponds with the camera number
         """
         #TODO: Do something with the sender argument of getImgUtp
-        img, sender = localnet.getImgUtp(self.camnum)
+        img = localnet.getImgUtp(self.sock, self.size)
         img = self.processIncomingImg(img)
         return img
     
@@ -81,7 +83,7 @@ class Camera:
         img = pickle.loads(img)
         img = zlib.decompress(img)
         img = Image.fromarray(img)
-        img = ImageTK.PhotoImage(img)
+        img = ImageTk.PhotoImage(img)
         return img
     
 class LocalCamera:
@@ -105,8 +107,9 @@ class LocalCamera:
             testcam.release()
             self.active = False
     
-    def setOnGrid(self, row, column, cspan, rspan):
-        self.label.grid(column=column, row=row, coulmnspan=cspan, rowspan=rspan)
+    def setOnGrid(self, row, column, columnspan, rowspan):
+        print("Hello World")
+        self.label.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
 
     def updateCam(self):
         _, frame = self.cam.read()
@@ -117,13 +120,13 @@ class LocalCamera:
     def processImg(self, img):
         #Array Processing
         if self.color == "RGB":
-            img = cv2.cvtcolor(img, cv2.BGR2RGB)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif self.color == "GRAY":
-            img = cv2.cvtcolor(img, cv2.BGR2GRAY)
-        img = imutils.resize(width=self.width, height=self.height)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        img = imutils.resize(image = img, width=self.width, height=self.height)
         #Conversions
         img = Image.fromarray(img)
-        img = ImageTK.PhotoImage(img)
+        img = ImageTk.PhotoImage(img)
         return img
 
 class Entry:

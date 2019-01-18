@@ -146,7 +146,7 @@ def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype
                 break
 
 def runMatch(time=180):
-    sock = setupServerSocket(socktype=socktype)
+    sock = setupServerSocket()
     #Sets up networktables
     table = setupNetworkTable(ip, "/vision")
     #Scans for active cameras and posts them to NetworkTables

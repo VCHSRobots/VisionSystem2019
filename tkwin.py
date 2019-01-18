@@ -11,6 +11,11 @@ from networktables import NetworkTables as nt
 #Local Imports
 import labels
 
+#Globals
+ip = "10.44.15.41"
+nt.initialize(ip)
+visiontable = nt.getTable("/vision")
+
 class TkWin:
     def __init__(self, name, width = 100, height = 100):
         #TODO width and height are magic numbers
@@ -33,7 +38,7 @@ class TkWin:
         """
         Initiates the tkinter window while running the instance's set thread function
         """
-        thread = threading.Thread(target=self.threadLoop, args=(self))
+        thread = threading.Thread(target=self.threadLoop)
         thread.start()
         self.root.mainloop()
 
@@ -44,18 +49,16 @@ class TkWin:
         self.threadloop = func
 
     def threadLoop(self):
-        self.threadloop()
+        self.threadloop(self)
 
     def addCam(self, camnum):
         """
         Tries to add a remote camera to the window; returns False if it fails
         """
-        camera = labels.Camera(camnum, self.root)
-        if camera.active:
-            self.cameras.append(camera)
+        if visiontable.getNumber("{0}isactive", False):
+            self.cameras.append(labels.Camera(camnum, self.root))
             return True
-        else:
-            return False
+        return False
         
     def setCamColor(self, camind, color):
         """
@@ -107,15 +110,16 @@ class TkWin:
         for num in guimap[1]:
             labelnum = int(re.sub(r"[a-zA-Z]", "", guimap[1][num]))
             labeltype = re.sub(r"[0-9]", "", guimap[1][num])
-        if labeltype.lower() == "camera":
-            label = self.cameras[labelnum]
-        elif labeltype.lower() == "button":
-            label = self.buttons[labelnum]
-        elif labeltype.lower() == "entry":
-            label = self.entries[labelnum]
-        elif labeltype.lower() == "textbox":
-            label = self.textboxes[labelnum]
-        label.grid(column = labelspans[num][0], row = labelspans[num][2], columnspan = objspans[num][1]-objspans[num][0], rowspan = objspans[num][3]-objspans[num][2])
+            if labeltype.lower() == "camera":
+                label = self.cameras[labelnum]
+            elif labeltype.lower() == "button":
+                label = self.buttons[labelnum]
+            elif labeltype.lower() == "entry":
+                label = self.entries[labelnum]
+            elif labeltype.lower() == "textbox":
+                label = self.textboxes[labelnum]
+            num = int(num)
+            label.label.grid(column = labelspans[num][0], row = labelspans[num][2], columnspan = labelspans[num][1]-labelspans[num][0], rowspan = labelspans[num][3]-labelspans[num][2])
 
     def killLoop(self):
         self.active = False
@@ -127,7 +131,7 @@ class TkWin:
         for num in range(camrange):
             self.addCam(num)
 
-def null():
+def null(self):
     pass
 
 def findLabelSpans(guimap):
@@ -135,8 +139,8 @@ def findLabelSpans(guimap):
     firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
     numencountered = False
     for num in guimap[1]:
+        num = int(num)
         for ind, row in enumerate(guimap[0]):
-            print(row)
             if num in row:
                 if not numencountered:
                     firstrow = ind

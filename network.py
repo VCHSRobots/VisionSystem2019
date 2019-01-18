@@ -3,13 +3,14 @@
 
 #Module Level
 import socket
+import select
 import pickle
 import numpy
 
 #Globals
 TCP = socket.SOCK_STREAM
 UTP = socket.SOCK_DGRAM
-ip = "10.44.15.59"
+ip = "10.44.15.41"
 sock = socket.socket(socket.AF_INET, UTP)
 
 def initTcpClient(ip, port):
@@ -20,17 +21,17 @@ def initTcpClient(ip, port):
     soc.connect((ip, port))
     return soc
 
-def getImgUtp(port):
+def getImgUtp(sock, size):
     """
     Returns a numpy array image from the specified utp network camera port
     """
-    data, sender = sock.recvfrom((ip, port))
+    data, sender = sock.recv(size)
     array = pickle.loads(data)
     return array, sender
 
-def pollCamSocket(camnum):
-    data = sock.recv((ip, 5800+camnum))
-    if data:
-        return True
-    else:
-        return False
+def selectReadableCams(camsocks):
+    readable = []
+    socks, _, _ = select.select(camsocks.values(), [], [])
+    for sock in socks:
+        readable.append(camsocks.index(sock))
+    return readable
