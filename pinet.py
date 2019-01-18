@@ -16,6 +16,7 @@ TCP = socket.SOCK_STREAM
 UTP = socket.SOCK_DGRAM
 RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
+#Ip is configured to Holiday's pi... change if neccecary!
 ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
@@ -30,7 +31,7 @@ def setupServerSocket(socktype = UTP):
     #   sock.listen()
     return sock
 
-def exportImage(camera, camnum, socket, width = dwidth, height = dheight, color = RGB, compression = 6, table=None):
+def exportImage(camera, camnum, sock, width = dwidth, height = dheight, color = RGB, compression = 6, table=None):
     """
     Reads, pickles, and exports an image from the OpenCV camera
     """
@@ -83,11 +84,11 @@ def scanForCams(numrange = (0, 100)):
                 cams[num] = cam
     return cams
 
-def setupNetworkTable(ip, tablename = "/vision"):
+def setupNetworkTable(tablename = "/vision"):
     """
     Sets up networktable client with the specified ip and returns the specified table
     """
-    ip = "10.44.15.1"
+    ip = "roborio-4415-frc.local"
     nt.initialize(ip)
     table = nt.getTable(tablename)
     return table
@@ -148,12 +149,12 @@ def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype
 def runMatch(time=180):
     sock = setupServerSocket()
     #Sets up networktables
-    table = setupNetworkTable(ip, "/vision")
+    table = setupNetworkTable("/vision")
     #Scans for active cameras and posts them to NetworkTables
     cams = scanForCams(numrange=(0,10))
     for camnum in cams:
         table.putBoolean("{0}isactive".format(camnum), True)
-        exportImage(cams[camnum], camnum, socket = sock, table = table)
+        exportImage(cams[camnum], camnum, sock = sock, table = table)
     #Opens bound socket and listens for start signal
     listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     listener.bind(("10.44.15.59", 5800))
@@ -166,13 +167,13 @@ def test(time=180):
     camnum = 0
     sock = setupServerSocket()
     #Sets up networktables
-    table = setupNetworkTable(ip, "/vision")
+    table = setupNetworkTable("/vision")
     #Scans for active cameras and posts them to NetworkTables
     cams = scanForCams(numrange=(0,10))
     for camnum in cams:
         table.putBoolean("{0}isactive".format(camnum), True)
         print("Camnum: ", camnum)
-        exportImage(cams[camnum], camnum, socket = sock, table = table)
+        exportImage(cams[camnum], camnum, sock = sock, table = table)
     #Exports vision system stream
     exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
 

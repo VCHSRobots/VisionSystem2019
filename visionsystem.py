@@ -6,8 +6,11 @@ import json
 import socket
 from networktables import NetworkTables as nt
 
-ntip = "10.44.15.1"
-nt.initialize(ntip)
+#Ip is configured to Holiday's laptop... change if neccecary!
+ip = "10.44.15.41"
+ntinit = False
+while not ntinit:
+    ntinit = nt.initialize("roborio-4415-frc.local")
 visiontable = nt.getTable("/vision")
 
 def testLoop(self):
@@ -27,7 +30,7 @@ def testSystem():
     win = tkwin.TkWin("Test")
     camnums = getActiveCams(10)
     for camnum in camnums:
-        win.addCam(0)
+        win.addCam(camnum)
     win.setThreadLoop(testLoop)
     guifile = open("test.gui")
     print(win.cameras)
@@ -49,7 +52,7 @@ def getActiveCams(numrange):
 
 def sendStartSignal():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(b"s", ("10.44.15.41", 5800))
+    sock.sendto(b"s", (ip, 5800))
     sock.close()
 
 def alphaLoop(self):
