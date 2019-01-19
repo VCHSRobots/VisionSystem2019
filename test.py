@@ -4,16 +4,20 @@ import pickle
 import socket
 import zlib
 import io
+import time
 import numpy as np
 from PIL import Image
 from networktables import NetworkTables as nt
 
 #Ip is configured to Holiday's laptop... change if neccecary!
 ip = "10.44.15.41"
+piip = "10.44.15.59"
 adr = (ip, 4000)
+piadr = (piip, 4000)
 nt.initialize("roborio-4415-frc.local")
 table = nt.getTable("/vision")
-maxsize = 40000
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+maxsize = 100000
 
 def pitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -44,24 +48,35 @@ def processImg(img):
   img = Image.fromarray(img)
   imgbytes = io.BytesIO()
   img.save(imgbytes, format = "JPEG")
+  imgbytes = imgbytes.getvalue()
   imgbytes = zlib.compress(imgbytes, 9)
   return imgbytes
+
+def ping():
+  sock.bind(adr)
+  starttime = time.perf_counter()
+  sock.sendto(b"Hello World", piadr)
+  d = sock.recv(20)
+  endtime = time.perf_counter()
+  print("{0}, time = {1}".format(d, endtime-starttime))
+
+def pingback():
+  sock.bind(piadr)
+  d = sock.recv(20)
+  sock.sendto(d, adr)
 
 def clitest():
   #Size variable can be eliminated: recv reads to end of buffer
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.bind(adr)
-  table.putBoolean("0isread", False)
   try:
     while True:
-      print(table.getBoolean("0isread", True))
       image = sock.recv(maxsize)
       table.putBoolean("0isread", True)
       image = zlib.decompress(image)
       image = io.BytesIO(image)
       image = Image.open(image)
       image = np.asarray(image)
-      print(image)
       cv2.imshow("img", image)
       cv2.waitKey(1)
   except KeyboardInterrupt:
