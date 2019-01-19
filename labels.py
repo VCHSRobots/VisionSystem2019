@@ -5,7 +5,6 @@
 import socket
 import imutils
 import zlib
-import pickle
 import cv2
 import tkinter as tk
 from PIL import Image
@@ -33,9 +32,11 @@ class Camera:
         #TODO: Width and Height are magic numbers: replace them with a good default.
         self.width = 100
         self.height = 100
-        self.color = "GRAY"
+        self.color = True
         self.framerate = 10
+        self.quantization = 8
         self.compression = 6
+        self.qualtiy = 95
         self.updateCamOverNetwork()
         self.label = tk.Label(root)
         #Makes a listener socket bound to this specific camera
@@ -66,9 +67,11 @@ class Camera:
         visiontable.putBoolean("{0}active".format(self.camnum), self.active)
         visiontable.putNumber("{0}width".format(self.camnum), self.width)
         visiontable.putNumber("{0}height".format(self.camnum), self.height)
-        visiontable.putString("{0}color".format(self.camnum), self.color)
+        visiontable.putBoolean("{0}color".format(self.camnum), self.color)
         visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
+        visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
         visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
+        visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
         
     def getImgFromNetwork(self):
         """
@@ -83,9 +86,10 @@ class Camera:
         """
         Converts an image to the TKInter usable format
         """
-        img = pickle.loads(img)
+        #Decompresses IOBytes image
         img = zlib.decompress(img)
-        img = Image.fromarray(img)
+        #Opens image as if it were a bytes-based file object
+        img = Image.open(img)
         img = ImageTk.PhotoImage(img)
         return img
     

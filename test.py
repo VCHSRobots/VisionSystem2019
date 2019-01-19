@@ -16,8 +16,12 @@ def pitest():
   cam = cv2.VideoCapture(0)
   while True:
     _, frame = cam.read()
-    frame = pickle.dumps(frame)
-    size = sock.sendto(frame, adr)
+    frame = Image.fromarray(img)
+    frame.quantize(camvals["quantization"])
+    framebytes = io.BytesIO()
+    frame.save(framebytes, quality=camvals["quality"])
+    framebytes = zlib.compress(imgbytes, camvals["compression"])
+    size = sock.sendto(framebytes, adr)
     table.putNumber("0size", size)
     cv2.waitKey(1)
 
@@ -30,7 +34,8 @@ def clitest():
       if size:
         image = sock.recv(size)
         image = zlib.decompress(image)
-        image = pickle.loads(image)
+        image = Image.open(image)
+        image = np.asarray(image)
         print(image)
         cv2.imshow("img", image)
         cv2.waitKey(1)
