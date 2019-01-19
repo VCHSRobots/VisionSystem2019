@@ -13,6 +13,7 @@ ip = "10.44.15.41"
 adr = (ip, 4000)
 nt.initialize("roborio-4415-frc.local")
 table = nt.getTable("/vision")
+maxsize = 40000
 
 def pitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -28,14 +29,8 @@ def pitest():
     while True:
       _, frame = cam.read()
       frame = Image.fromarray(frame)
-      frame.quantize(8)
-      framebytes = io.BytesIO()
-      frame.save(framebytes, format="JPEG")
-      framebytes = framebytes.getvalue()
-      framebytes = zlib.compress(framebytes, 9)
+      framebytes = processImg(frame)
       size = sock.sendto(framebytes, adr)
-      table.putNumber("0size", size)
-      print(size)
   except KeyboardInterrupt:
     print("Action Interrupted By User")
     raise
@@ -45,16 +40,22 @@ def pitest():
   finally:
     cam.release()
 
+def processImg(img):
+  img = Image.fromarray(img)
+  imgbytes = io.BytesIO()
+  img.save(imgbytes, format = "JPEG")
+  imgbytes = zlib.compress(imgbytes, 9)
+  return imgbytes
+
 def clitest():
+  #Size variable can be eliminated: recv reads to end of buffer
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.bind(adr)
   table.putBoolean("0isread", False)
   try:
     while True:
-      size = int(table.getNumber("0size", 0))
       print(table.getBoolean("0isread", True))
-      print("Attempting to read buffer of size {0}".format(size))
-      image = sock.recv(size)
+      image = sock.recv(maxsize)
       table.putBoolean("0isread", True)
       image = zlib.decompress(image)
       image = io.BytesIO(image)
