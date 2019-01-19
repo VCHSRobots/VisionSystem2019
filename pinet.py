@@ -182,5 +182,5 @@ def test(time=180):
   try:
     exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
   finally:
-    for cam in cams:
-      cam.release()
+    for camnum in cams:
+      cams[camnum].release()
