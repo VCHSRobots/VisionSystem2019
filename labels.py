@@ -12,9 +12,6 @@ from PIL import Image
 from PIL import ImageTk
 from networktables import NetworkTables as nt
 
-#Local Imports
-import network as localnet #UTP networking library with vision system
-
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
 ip = "10.44.15.41"

@@ -23,6 +23,8 @@ ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
 defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
+#Camera value keys which need to be cast to integers
+intvals = ["width", "height", "compression", "quality"]
 robotip = "roborio-4415-frc.local"
 nt.initialize(robotip)
 table = nt.getTable("/vision")
@@ -130,6 +132,9 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
   while True:
     for num in cams:
       camvals = pollCamVars(num)
+      #Casts certain numerical camera values to integer
+      for key in intvals:
+        camvals[key] = int(camvals[key])
       timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
       if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
         exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)

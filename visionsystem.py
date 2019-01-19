@@ -47,6 +47,7 @@ def getActiveCams(numrange):
     actives = []
     for num in range(numrange):
         isactive = visiontable.getBoolean("{0}isactive".format(num), False)
+        print(isactive)
         if isactive:
             actives.append(num)
     return actives

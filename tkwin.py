@@ -56,7 +56,7 @@ class TkWin:
         """
         Tries to add a remote camera to the window; returns False if it fails
         """
-        if visiontable.getNumber("{0}isactive", False):
+        if visiontable.getBoolean("{0}isactive".format(camnum), False):
             self.cameras.append(labels.Camera(camnum, self.root))
             return True
         return False
