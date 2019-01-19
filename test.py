@@ -19,16 +19,18 @@ def pitest():
   cam = cv2.VideoCapture(0)
   try:
     while True:
-      _, frame = cam.read()
-      frame = Image.fromarray(frame)
-      frame.quantize(8)
-      framebytes = io.BytesIO()
-      frame.save(framebytes, format="JPEG")
-      framebytes = framebytes.getvalue()
-      framebytes = zlib.compress(framebytes, 9)
-      size = sock.sendto(framebytes, adr)
-      table.putNumber("0size", size)
-      print(size)
+      if table.getBoolean("0isread", False):
+        _, frame = cam.read()
+        frame = Image.fromarray(frame)
+        frame.quantize(8)
+        framebytes = io.BytesIO()
+        frame.save(framebytes, format="JPEG")
+        framebytes = framebytes.getvalue()
+        framebytes = zlib.compress(framebytes, 9)
+        table.putBoolean("0isread", False)
+        size = sock.sendto(framebytes, adr)
+        table.putNumber("0size", size)
+        print(size)
   except KeyboardInterrupt:
     print("Action Interrupted By User")
     raise
@@ -44,8 +46,10 @@ def clitest():
   try:
     while True:
       size = int(table.getNumber("0size", 0))
-      if size:
+      print(size)
+      if not table.getBoolean("0isread", True):
         image = sock.recv(size)
+        table.putBoolean("0isread", True)
         image = zlib.decompress(image)
         image = io.BytesIO(image)
         image = Image.open(image)
@@ -60,4 +64,5 @@ def clitest():
     raise
   finally:
     sock.close()
+    cv2.destroyAllWindows()
 
