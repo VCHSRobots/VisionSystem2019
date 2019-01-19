@@ -26,18 +26,16 @@ def pitest():
     camnum += 1
   try:
     while True:
-      if table.getBoolean("0isread", False):
-        _, frame = cam.read()
-        frame = Image.fromarray(frame)
-        frame.quantize(8)
-        framebytes = io.BytesIO()
-        frame.save(framebytes, format="JPEG")
-        framebytes = framebytes.getvalue()
-        framebytes = zlib.compress(framebytes, 9)
-        table.putBoolean("0isread", False)
-        size = sock.sendto(framebytes, adr)
-        table.putNumber("0size", size)
-        print(size)
+      _, frame = cam.read()
+      frame = Image.fromarray(frame)
+      frame.quantize(8)
+      framebytes = io.BytesIO()
+      frame.save(framebytes, format="JPEG")
+      framebytes = framebytes.getvalue()
+      framebytes = zlib.compress(framebytes, 9)
+      size = sock.sendto(framebytes, adr)
+      table.putNumber("0size", size)
+      print(size)
   except KeyboardInterrupt:
     print("Action Interrupted By User")
     raise
@@ -50,19 +48,21 @@ def pitest():
 def clitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.bind(adr)
+  table.putBoolean("0isread", False)
   try:
     while True:
       size = int(table.getNumber("0size", 0))
-      if not table.getBoolean("0isread", True):
-        image = sock.recv(size)
-        table.putBoolean("0isread", True)
-        image = zlib.decompress(image)
-        image = io.BytesIO(image)
-        image = Image.open(image)
-        image = np.asarray(image)
-        print(image)
-        cv2.imshow("img", image)
-        cv2.waitKey(1)
+      print(table.getBoolean("0isread", True))
+      print("Attempting to read buffer of size {0}".format(size))
+      image = sock.recv(size)
+      table.putBoolean("0isread", True)
+      image = zlib.decompress(image)
+      image = io.BytesIO(image)
+      image = Image.open(image)
+      image = np.asarray(image)
+      print(image)
+      cv2.imshow("img", image)
+      cv2.waitKey(1)
   except KeyboardInterrupt:
     print("Action Interrupted By User")
   except OSError:
