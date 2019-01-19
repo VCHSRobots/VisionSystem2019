@@ -21,7 +21,7 @@ GRAY = cv2.COLOR_BGR2GRAY
 ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
-defaultcamvals = {"isactive": False, "width":, dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
+defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
 
 def setupServerSocket(socktype = UTP):
   """

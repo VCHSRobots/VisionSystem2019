@@ -3,6 +3,8 @@ import cv2
 import pickle
 import socket
 import zlib
+import io
+from PIL import Image, ImageTk
 from networktables import NetworkTables as nt
 
 #Ip is configured to Holiday's laptop... change if neccecary!
@@ -16,14 +18,13 @@ def pitest():
   cam = cv2.VideoCapture(0)
   while True:
     _, frame = cam.read()
-    frame = Image.fromarray(img)
-    frame.quantize(camvals["quantization"])
+    frame = Image.fromarray(frame)
+    frame.quantize(8)
     framebytes = io.BytesIO()
-    frame.save(framebytes, quality=camvals["quality"])
-    framebytes = zlib.compress(imgbytes, camvals["compression"])
+    frame.save(framebytes, quality=95)
+    framebytes = zlib.compress(framebytes, 9)
     size = sock.sendto(framebytes, adr)
     table.putNumber("0size", size)
-    cv2.waitKey(1)
 
 def clitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
