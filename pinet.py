@@ -51,9 +51,10 @@ def processImg(img, camvals):
   img = imutils.resize(width = camvals["width"], height = camvals["height"])
   img = cv2.cvtColor(img, camvals["color"])
   img = Image.fromarray(img)
-  img.quantize(camvals["quantization"])
+  #Quantization may or may not be used, since tests proved it might be ineffective at reducing image size
+  #img.quantize(camvals["quantization"])
   imgbytes = io.BytesIO()
-  img.save(imgbytes, quality=camvals["quality"])
+  img.save(imgbytes, format = "JPEG") #, quality=camvals["quality"])
   imgbytes = zlib.compress(imgbytes, camvals["compression"])
   return imgbytes
 

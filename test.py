@@ -4,6 +4,7 @@ import pickle
 import socket
 import zlib
 import io
+import numpy as np
 from PIL import Image, ImageTk
 from networktables import NetworkTables as nt
 
@@ -22,6 +23,7 @@ def pitest():
     frame.quantize(8)
     framebytes = io.BytesIO()
     frame.save(framebytes, quality=95)
+    framebytes = framebytes.getvalue()
     framebytes = zlib.compress(framebytes, 9)
     size = sock.sendto(framebytes, adr)
     table.putNumber("0size", size)
@@ -35,6 +37,7 @@ def clitest():
       if size:
         image = sock.recv(size)
         image = zlib.decompress(image)
+        image = io.BytesIO(image)
         image = Image.open(image)
         image = np.asarray(image)
         print(image)

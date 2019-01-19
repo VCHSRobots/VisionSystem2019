@@ -6,6 +6,7 @@ import socket
 import imutils
 import zlib
 import cv2
+import io
 import tkinter as tk
 from PIL import Image
 from PIL import ImageTk
@@ -89,6 +90,7 @@ class Camera:
         #Decompresses IOBytes image
         img = zlib.decompress(img)
         #Opens image as if it were a bytes-based file object
+        img = io.BytesIO(img).getvalue()
         img = Image.open(img)
         img = ImageTk.PhotoImage(img)
         return img
