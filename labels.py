@@ -78,8 +78,7 @@ class Camera:
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
-        #TODO: Do something with the sender argument of getImgUtp
-        img = localnet.getImgUtp(self.sock, self.maxsize)
+        img = self.sock.recv(self.maxsize)
         img = self.processIncomingImg(img)
         return img
     
@@ -89,11 +88,15 @@ class Camera:
         """
         #Decompresses IOBytes image
         img = zlib.decompress(img)
-        #Opens image as if it were a bytes-based file object
-        img = io.BytesIO(img).getvalue()
+        #Turns image into bytes string
+        img = io.BytesIO(img)
+        #Opens image as if it were a file object
         img = Image.open(img)
         img = ImageTk.PhotoImage(img)
         return img
+
+    def shutdown(self):
+        self.sock.close()
     
 class LocalCamera:
     """
@@ -138,6 +141,9 @@ class LocalCamera:
         img = ImageTk.PhotoImage(img)
         return img
 
+    def shutdown(self):
+        self.cam.release()
+
 class Entry:
     def __init__(self, root, name, defaultval):
         self.entry = tk.Entry(root)
@@ -149,3 +155,6 @@ class Entry:
         Recieves any input from the user-input field and puts it in self.var as a string
         """
         self.value = str(self.var.get())
+
+    def shutdown(self):
+        pass

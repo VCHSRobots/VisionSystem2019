@@ -3,7 +3,6 @@
 
 #Module Level
 import socket
-import select
 import pickle
 import numpy
 
@@ -27,10 +26,3 @@ def getImgUtp(sock, size):
     """
     data = sock.recv(size)
     return data
-
-def selectReadableCams(camsocks):
-    readable = []
-    socks, _, _ = select.select(camsocks.values(), [], [])
-    for sock in socks:
-        readable.append(camsocks.index(sock))
-    return readable

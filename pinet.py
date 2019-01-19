@@ -23,6 +23,9 @@ ip = "10.44.15.59"
 dwidth = 400
 dheight = 400
 defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
+robotip = "roborio-4415-frc.local"
+nt.initialize(robotip)
+table = nt.getTable("/vision")
 
 def setupServerSocket(socktype = UTP):
   """
@@ -93,29 +96,20 @@ def scanForCams(numrange = (0, 100)):
       cams[num] = cam
   return cams
 
-def setupNetworkTable(tablename = "/vision"):
-  """
-  Sets up networktable client with the specified ip and returns the specified table
-  """
-  ip = "roborio-4415-frc.local"
-  nt.initialize(ip)
-  table = nt.getTable(tablename)
-  return table
-
-def pollCamVars(camnum, table):
+def pollCamVars(camnum):
   """
   Recieves NetworkTables variables for the specified camera number
   """
-  vals = pollTableVals(camnum, defaultcamvals, table)
+  vals = pollTableVals(camnum, defaultcamvals)
   if vals["color"] == True:
-    color = RGB
+    vals["color"] = RGB
   elif vals["color"] == False:
-    color = GRAY
+    vals["color"] = GRAY
   else:
-    color = RGB
+    vals["color"] = RGB
   return vals
 
-def pollTableVals(camnum, keys, table):
+def pollTableVals(camnum, keys):
   #Note: Keys should be key: default pairs
   vals = {}
   for key in keys:
@@ -126,7 +120,7 @@ def pollTableVals(camnum, keys, table):
       vals[key] = table.getBoolean("{0}{1}".format(camnum, key), keys[key])
   return vals
 
-def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
+def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
   """
   Exports a stream of images with each camera individually managed by its NetworkTables values
   """
@@ -135,10 +129,10 @@ def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype
   timerecords = [[starttime, 0]] * len(cams) #Makes records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
   while True:
     for num in cams:
-      camvals = pollCamVars(num, table)
+      camvals = pollCamVars(num)
       timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
-      if camvals["active"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
-        exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals, table=table)
+      if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
+        exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
     if cv2.waitKey(1) == 0:
       sock.close()
       break
@@ -149,8 +143,6 @@ def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype
 
 def runMatch(time=180):
   sock = setupServerSocket()
-  #Sets up networktables
-  table = setupNetworkTable("/vision")
   #Scans for active cameras and posts them to NetworkTables
   cams = scanForCams(numrange=(0,10))
   for camnum in cams:
@@ -162,7 +154,7 @@ def runMatch(time=180):
   listener.recv(1) #Listens for any byte
   listener.close()
   #Exports vision system stream
-  exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
+  exportManagedStream(sock, cams, ip=ip, timeout=time)
 
 def test(time=180):
   """
@@ -170,17 +162,15 @@ def test(time=180):
   """
   camnum = 0
   sock = setupServerSocket()
-  #Sets up networktables
-  table = setupNetworkTable("/vision")
   #Scans for active cameras and posts them to NetworkTables
   cams = scanForCams(numrange=(0,10))
   for camnum in cams:
-    table.putBoolean("{0}isactive".format(camnum), True)
+    print(table.putBoolean("{0}isactive".format(int(camnum)), True))
     print("Camnum: ", camnum)
     exportImage(cams[camnum], camnum, sock = sock, table = table)
   #Exports vision system stream
   try:
-    exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
+    exportManagedStream(sock, cams, ip=ip, timeout=time)
   finally:
     for camnum in cams:
       cams[camnum].release()

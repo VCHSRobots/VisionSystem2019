@@ -13,7 +13,7 @@ import labels
 
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
-ip = "10.44.15.59"
+ip = "10.44.15.41"
 nt.initialize("roborio-4415-frc.local")
 visiontable = nt.getTable("/vision")
 
@@ -132,10 +132,22 @@ class TkWin:
         for num in range(camrange):
             self.addCam(num)
 
+    def emergencyShutdown(self):
+        """
+        Safely shuts down system in case of error
+        """
+        for cam in self.cameras:
+            cam.shutdown()
+        for cam in self.localcameras:
+            cam.shutdown()
+
 def null(self):
     pass
 
 def findLabelSpans(guimap):
+    """
+    Detects griding paramiters from a gui file list
+    """
     labelspans = {} #{num: (firstcolumn, lastcolumn, firstrow, lastrow)}
     firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
     numencountered = False

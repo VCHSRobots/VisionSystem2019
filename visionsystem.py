@@ -35,7 +35,10 @@ def testSystem():
     guimap = json.load(guifile)
     guifile.close()
     win.processGuiMap(guimap)
-    win.runWin()
+    try:
+        win.runWin()
+    finally:
+        win.emergencyShutdown()
 
 def getActiveCams(numrange):
     """
