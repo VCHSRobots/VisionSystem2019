@@ -16,7 +16,14 @@ table = nt.getTable("/vision")
 
 def pitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  cam = cv2.VideoCapture(0)
+  active = False
+  camnum = 0
+  while not active:
+    cam = cv2.VideoCapture(camnum)
+    active, _ = cam.read()
+    if camnum > 10:
+      raise OSError("No Camera Found")
+    camnum += 1
   try:
     while True:
       if table.getBoolean("0isread", False):
@@ -46,7 +53,6 @@ def clitest():
   try:
     while True:
       size = int(table.getNumber("0size", 0))
-      print(size)
       if not table.getBoolean("0isread", True):
         image = sock.recv(size)
         table.putBoolean("0isread", True)
