@@ -121,9 +121,9 @@ def pollTableVals(camnum, keys, table):
   for key in keys:
     valtype = type(keys[key])
     if valtype == int or valtype == float:
-      vals[key] = table.getNumber("{camnum}{key}".format(camnum, key), keys[key])
+      vals[key] = table.getNumber("{0}{1}".format(camnum, key), keys[key])
     elif valtype == bool:
-      vals[key] = table.getBoolean("{camnum}{key}".format(camnum, key), keys[key])
+      vals[key] = table.getBoolean("{0}{1}".format(camnum, key), keys[key])
   return vals
 
 def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
@@ -165,6 +165,9 @@ def runMatch(time=180):
   exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
 
 def test(time=180):
+  """
+  Safe test function of the vision system
+  """
   camnum = 0
   sock = setupServerSocket()
   #Sets up networktables
@@ -176,5 +179,8 @@ def test(time=180):
     print("Camnum: ", camnum)
     exportImage(cams[camnum], camnum, sock = sock, table = table)
   #Exports vision system stream
-  exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
-
+  try:
+    exportManagedStream(sock, cams, table=table, ip=ip, timeout=time)
+  finally:
+    for cam in cams:
+      cam.release()
