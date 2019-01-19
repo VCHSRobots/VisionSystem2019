@@ -52,11 +52,12 @@ def processImg(img, camvals):
   """
   Processes an image from numpy array format to jpeg butes blob
   """
-  img = imutils.resize(width = camvals["width"], height = camvals["height"])
+  img = imutils.resize(img, width = camvals["width"], height = camvals["height"])
   img = cv2.cvtColor(img, camvals["color"])
   img = Image.fromarray(img)
   imgbytes = io.BytesIO()
   img.save(imgbytes, format = "JPEG") #, quality=camvals["quality"])
+  imgbytes = imgbytes.getvalue()
   imgbytes = zlib.compress(imgbytes, camvals["compression"])
   return imgbytes
 
