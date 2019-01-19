@@ -5,7 +5,7 @@ import socket
 import zlib
 import io
 import numpy as np
-from PIL import Image, ImageTk
+from PIL import Image
 from networktables import NetworkTables as nt
 
 #Ip is configured to Holiday's laptop... change if neccecary!
@@ -22,7 +22,7 @@ def pitest():
     frame = Image.fromarray(frame)
     frame.quantize(8)
     framebytes = io.BytesIO()
-    frame.save(framebytes, quality=95)
+    frame.save(framebytes, format="JPEG")
     framebytes = framebytes.getvalue()
     framebytes = zlib.compress(framebytes, 9)
     size = sock.sendto(framebytes, adr)
