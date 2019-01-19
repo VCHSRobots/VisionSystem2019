@@ -8,6 +8,7 @@ import imutils
 import zlib
 import cv2
 import io
+import sys
 import numpy as np
 from PIL import Image
 from networktables import NetworkTables as nt
@@ -35,14 +36,17 @@ def setupServerSocket(socktype = UTP):
 
 def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
   """
-  Reads, pickles, and exports an image from the OpenCV camera
+  Reads, sterilizes, and exports an image from the OpenCV camera
   """
   _, frame = camera.read()
   frame = processImg(frame, camvals)
-  size = sock.sendto(frame, (ip, camnum+5800))
+  #Checks if size of image is bigger than the reciever buffer can handle
   if table:
-    table.putNumber("{0}size".format(camnum), size)
-
+    size = sys.getsizeof(frame)
+    if sys.getsizeof(frame) > table.getNumber("{0}maxsize".format(camnum), 50000):
+      table.putNumber("{0}maxsize".format(camnum), size)
+      time.sleep(.05) #Gives client time to catch NetworkTables update if about to send an image larger than the default buffer
+  sock.sendto(frame, (ip, camnum+5800))
 
 def processImg(img, camvals):
   """
@@ -51,8 +55,6 @@ def processImg(img, camvals):
   img = imutils.resize(width = camvals["width"], height = camvals["height"])
   img = cv2.cvtColor(img, camvals["color"])
   img = Image.fromarray(img)
-  #Quantization may or may not be used, since tests proved it might be ineffective at reducing image size
-  #img.quantize(camvals["quantization"])
   imgbytes = io.BytesIO()
   img.save(imgbytes, format = "JPEG") #, quality=camvals["quality"])
   imgbytes = zlib.compress(imgbytes, camvals["compression"])
@@ -123,20 +125,6 @@ def pollTableVals(camnum, keys, table):
       vals[key] = table.getBoolean("{camnum}{key}".format(camnum, key), keys[key])
   return vals
 
-"""
-#Test Code
-def exportStream(camnum, ip, socktype = UTP, port = 1024):
-
-    Starts a stream of pickled images from the camera connected to external port camnum in the specified ip and network port
-
-    sock = setupSocket(ip, socktype, port)
-    cam = findCam()
-    while True:
-        exportImg(cam, sock, port)
-        if cv2.waitKey(1) == 0:
-            break
-"""
-
 def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
   """
   Exports a stream of images with each camera individually managed by its NetworkTables values
@@ -148,8 +136,8 @@ def exportManagedStream(sock, cams, table, ip = ip, numrange = (0, 10), socktype
     for num in cams:
       camvals = pollCamVars(num, table)
       timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
-      if active and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
-        exportImage(camera=cams[num], camnum=num, socket=sock, camvals=camvals table=table)
+      if camvals["active"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
+        exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals, table=table)
     if cv2.waitKey(1) == 0:
       sock.close()
       break

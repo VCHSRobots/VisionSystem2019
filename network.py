@@ -25,9 +25,8 @@ def getImgUtp(sock, size):
     """
     Returns a numpy array image from the specified utp network camera port
     """
-    data, sender = sock.recv(size)
-    array = pickle.loads(data)
-    return array, sender
+    data = sock.recv(size)
+    return data
 
 def selectReadableCams(camsocks):
     readable = []

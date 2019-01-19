@@ -37,7 +37,8 @@ class Camera:
         self.framerate = 10
         self.quantization = 8
         self.compression = 6
-        self.qualtiy = 95
+        self.quality = 95
+        self.maxsize = 50000
         self.updateCamOverNetwork()
         self.label = tk.Label(root)
         #Makes a listener socket bound to this specific camera
@@ -73,19 +74,20 @@ class Camera:
         visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
         visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
         visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
+        visiontable.putNumber("{0}maxsize".format(self.camnum), self.maxsize)
         
     def getImgFromNetwork(self):
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
         #TODO: Do something with the sender argument of getImgUtp
-        img = localnet.getImgUtp(self.sock, self.size)
+        img = localnet.getImgUtp(self.sock, self.maxsize)
         img = self.processIncomingImg(img)
         return img
     
     def processIncomingImg(self, img):
         """
-        Converts an image to the TKInter usable format
+        Converts a bytes jpeg image to the TKInter usable format
         """
         #Decompresses IOBytes image
         img = zlib.decompress(img)

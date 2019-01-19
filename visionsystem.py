@@ -8,9 +8,7 @@ from networktables import NetworkTables as nt
 
 #Ip is configured to Holiday's laptop... change if neccecary!
 ip = "10.44.15.41"
-ntinit = False
-while not ntinit:
-    ntinit = nt.initialize("roborio-4415-frc.local")
+nt.initialize("roborio-4415-frc.local")
 visiontable = nt.getTable("/vision")
 
 def testLoop(self):

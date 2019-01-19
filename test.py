@@ -45,7 +45,6 @@ def pitest():
     cam.release()
 
 def processImg(img):
-  img = Image.fromarray(img)
   imgbytes = io.BytesIO()
   img.save(imgbytes, format = "JPEG")
   imgbytes = imgbytes.getvalue()
@@ -69,6 +68,8 @@ def clitest():
   #Size variable can be eliminated: recv reads to end of buffer
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   sock.bind(adr)
+  framespast = 0
+  startime = time.perf_counter()
   try:
     while True:
       image = sock.recv(maxsize)
@@ -79,6 +80,8 @@ def clitest():
       image = np.asarray(image)
       cv2.imshow("img", image)
       cv2.waitKey(1)
+      framespast += 1
+      print("fps: {0}".format(framespast/(time.perf_counter()-startime)))
   except KeyboardInterrupt:
     print("Action Interrupted By User")
   except OSError:
