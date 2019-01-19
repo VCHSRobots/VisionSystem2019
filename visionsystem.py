@@ -18,6 +18,7 @@ def testLoop(self):
     while True:
         while self.active:
             activecams = getActiveCams(len(self.cameras))
+            print("Here")
             for activeind in activecams:
                 self.cameras[activeind].updateImgOnLabel()
 

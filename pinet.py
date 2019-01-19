@@ -18,8 +18,9 @@ TCP = socket.SOCK_STREAM
 UTP = socket.SOCK_DGRAM
 RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
-#Ip is configured to Holiday's pi... change if neccecary!
-ip = "10.44.15.59"
+#Ip is configured to Holiday's laptop and pi... change if neccecary!
+ip = "10.44.15.41"
+piip = "10.44.15.59"
 dwidth = 400
 dheight = 400
 defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
@@ -155,7 +156,7 @@ def runMatch(time=180):
     exportImage(cams[camnum], camnum, sock = sock, table = table)
   #Opens bound socket and listens for start signal
   listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  listener.bind((ip, 5800))
+  listener.bind((piip, 5800))
   listener.recv(1) #Listens for any byte
   listener.close()
   #Exports vision system stream
