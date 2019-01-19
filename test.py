@@ -17,16 +17,26 @@ table = nt.getTable("/vision")
 def pitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   cam = cv2.VideoCapture(0)
-  while True:
-    _, frame = cam.read()
-    frame = Image.fromarray(frame)
-    frame.quantize(8)
-    framebytes = io.BytesIO()
-    frame.save(framebytes, format="JPEG")
-    framebytes = framebytes.getvalue()
-    framebytes = zlib.compress(framebytes, 9)
-    size = sock.sendto(framebytes, adr)
-    table.putNumber("0size", size)
+  try:
+    while True:
+      _, frame = cam.read()
+      frame = Image.fromarray(frame)
+      frame.quantize(8)
+      framebytes = io.BytesIO()
+      frame.save(framebytes, format="JPEG")
+      framebytes = framebytes.getvalue()
+      framebytes = zlib.compress(framebytes, 9)
+      size = sock.sendto(framebytes, adr)
+      table.putNumber("0size", size)
+      print(size)
+  except KeyboardInterrupt:
+    print("Action Interrupted By User")
+    raise
+  except OSError:
+    print("OS Issues encountered!")
+    raise
+  finally:
+    cam.release()
 
 def clitest():
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -45,6 +55,9 @@ def clitest():
         cv2.waitKey(1)
   except KeyboardInterrupt:
     print("Action Interrupted By User")
+  except OSError:
+    print("Windows OS issues encountered!")
+    raise
   finally:
     sock.close()
 
