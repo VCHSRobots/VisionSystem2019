@@ -51,12 +51,12 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
     size = sys.getsizeof(frame)
     if sys.getsizeof(frame) > table.getNumber("{0}maxsize".format(camnum), 50000):
       table.putNumber("{0}maxsize".format(camnum), size)
-      time.sleep(.05) #Gives client time to catch NetworkTables update if about to send an image larger than the default buffer
+      sock.sendto(b"{0}overload".format(camnum), (ip, 5809)) #Warns client about NetworkTables update if about to send an image larger than the default buffer
   return sock.sendto(frame, (ip, camnum+5800))
 
 def processImg(img, camvals):
   """
-  Processes an image from numpy array format to jpeg butes blob
+  Processes an image from numpy array format to jpeg bytes blob
   """
   img = imutils.resize(img, width = camvals["width"], height = camvals["height"])
   img = cv2.cvtColor(img, camvals["color"])
@@ -140,7 +140,8 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
       #Casts certain numerical camera values to integer
       for key in intvals:
         camvals[key] = int(camvals[key])
-      timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
+      timerecords[num][1] += time.perf_counter()-timerecords[num][0] #Compares current time to time since the last time update to see how much time has passed
+      timerecords[num][0] = time.perf_counter()
       if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
         size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
         sizes.append(size)
@@ -164,7 +165,7 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
 def runMatch(time=180):
   sock = setupServerSocket()
   #Scans for active cameras and posts them to NetworkTables
-  cams = scanForCams(numrange=(0,10))
+  cams = scanForCams(numrange=(0,9))
   for camnum in cams:
     table.putBoolean("{0}isactive".format(camnum), True)
     exportImage(cams[camnum], camnum, sock = sock, table = table)
@@ -175,15 +176,16 @@ def runMatch(time=180):
   listener.close()
   #Exports vision system stream
   exportManagedStream(sock, cams, ip=ip, timeout=time)
+  for camnum in cams:
+    cams[camnum].release()
 
 def test(time=180):
   """
   Safe test function of the vision system
   """
-  camnum = 0
   sock = setupServerSocket()
   #Scans for active cameras and posts them to NetworkTables
-  cams = scanForCams(numrange=(0,10))
+  cams = scanForCams(numrange=(0,9))
   for camnum in cams:
     print(table.putBoolean("{0}isactive".format(int(camnum)), True))
     print("Camnum: ", camnum)
