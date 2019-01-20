@@ -144,11 +144,12 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
       if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
         size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
         sizes.append(size)
+        timerecords[num][1] = 0
         framesent += 1
-      if time.perf_counter-lastimesincediag >= 10:
+      if time.perf_counter()-lastimesincediag >= 10:
         avgsize = sum(sizes)/len(sizes)
         fps = framesent/10
-        print("{0} frames sent at {1}fps. Average image size: {2}".format(frames, fps, avgsize))
+        print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, avgsize))
         sizes.clear()
         framesent = 0
         lastimesincediag = time.perf_counter()
