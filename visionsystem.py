@@ -4,10 +4,12 @@
 import tkwin
 import json
 import socket
+import time
 from networktables import NetworkTables as nt
 
-#Ip is configured to Holiday's laptop... change if neccecary!
+#Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
+piip = "10.44.15.59"
 nt.initialize("roborio-4415-frc.local")
 visiontable = nt.getTable("/vision")
 
@@ -18,7 +20,6 @@ def testLoop(self):
     while True:
         while self.active:
             activecams = getActiveCams(len(self.cameras))
-            print("Here")
             for activeind in activecams:
                 self.cameras[activeind].updateImgOnLabel()
 
@@ -55,7 +56,7 @@ def getActiveCams(numrange):
 
 def sendStartSignal():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(b"s", (ip, 5800))
+    sock.sendto(b"s", (piip, 5800))
     sock.close()
 
 def alphaLoop(self):

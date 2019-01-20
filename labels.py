@@ -7,6 +7,8 @@ import imutils
 import zlib
 import cv2
 import io
+import time
+import numpy as np
 import tkinter as tk
 from PIL import Image
 from PIL import ImageTk
@@ -26,8 +28,8 @@ class Camera:
         self.camnum = camnum
         self.active = True
         #TODO: Width and Height are magic numbers: replace them with a good default.
-        self.width = 100
-        self.height = 100
+        self.width = 500
+        self.height = 500
         self.color = True
         self.framerate = 10
         self.quantization = 8
@@ -48,8 +50,8 @@ class Camera:
         """
         #Places an image from the networked camera on the label
         image = self.getImgFromNetwork()
-        self.label.configure(image=image)
-        self.label['image'] = image
+        self.label.config(image=image)
+        self.label.image = image
 
     def setOnGrid(self, row, column, cspan, rspan):
         """
@@ -89,6 +91,10 @@ class Camera:
         img = io.BytesIO(img)
         #Opens image as if it were a file object
         img = Image.open(img)
+        img = np.asarray(img)
+        img = imutils.resize(img, width = self.width, height = self.height)
+        img = cv2.cvtColor(img, self.color)
+        img = Image.fromarray(img)
         img = ImageTk.PhotoImage(img)
         return img
 
@@ -117,7 +123,6 @@ class LocalCamera:
             self.active = False
     
     def setOnGrid(self, row, column, columnspan, rowspan):
-        print("Hello World")
         self.label.grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
 
     def updateCam(self):
@@ -132,7 +137,7 @@ class LocalCamera:
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         elif self.color == "GRAY":
             img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img = imutils.resize(image = img, width=self.width, height=self.height)
+        #img = imutils.resize(image = img, width=self.width, height=self.height)
         #Conversions
         img = Image.fromarray(img)
         img = ImageTk.PhotoImage(img)

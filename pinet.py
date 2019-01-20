@@ -52,7 +52,7 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
     if sys.getsizeof(frame) > table.getNumber("{0}maxsize".format(camnum), 50000):
       table.putNumber("{0}maxsize".format(camnum), size)
       time.sleep(.05) #Gives client time to catch NetworkTables update if about to send an image larger than the default buffer
-  sock.sendto(frame, (ip, camnum+5800))
+  return sock.sendto(frame, (ip, camnum+5800))
 
 def processImg(img, camvals):
   """
@@ -130,6 +130,10 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
   #cams = scanForCams(numrange=(0,10)) #Gets a dict of avalible cams within the number range
   starttime = time.perf_counter()
   timerecords = [[starttime, 0]] * len(cams) #Makes records of when the time was last recorded and how long it's been since the frame was last updated for each camera in (lasttime, framediff) order
+  #The last time since diagnostic data was printed
+  lastimesincediag = 0
+  framesent = 0
+  sizes = []
   while True:
     for num in cams:
       camvals = pollCamVars(num)
@@ -138,7 +142,16 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
         camvals[key] = int(camvals[key])
       timerecords[num][1] += time.perf_counter()-timerecords[num][1] #Compares current time to time since the last time update to see how much time has passed
       if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
-        exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
+        size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
+        sizes.append(size)
+        framesent += 1
+      if time.perf_counter-lastimesincediag >= 10:
+        avgsize = sum(sizes)/len(sizes)
+        fps = framesent/10
+        print("{0} frames sent at {1}fps. Average image size: {2}".format(frames, fps, avgsize))
+        sizes.clear()
+        framesent = 0
+        lastimesincediag = time.perf_counter()
     if cv2.waitKey(1) == 0:
       sock.close()
       break
