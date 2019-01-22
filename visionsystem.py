@@ -57,15 +57,11 @@ def startSystem():
     """
     menustructure = {"Test": {"Do Nothing": menus.null, "Switch Menus_*self*": menus.matchMenu}}
     win = tkwin.TkWin("Vision System", menustructure=menustructure)
-    #Scans for active cameras
-    camnums = getActiveCams(9)
-    for camnum in camnums:
-        win.addCam(camnum)
     #Sets the function to be called when window is initated
     win.setThreadLoop(systemThread)
     #Sets up the main menu
     menus.configureMainMenu(win)
-    win.processGuiMap(menus.mainmenu)
+    win.processGuiMap(menus.mainmenu, "mainmenu")
     win.runWin()
 
 

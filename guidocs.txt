@@ -1,0 +1,12 @@
+
+multiview:
+    1: Front Camera
+    2: Back Camera
+    3: Left Camera
+    4: Right Camera
+    5: Shell-Like Entry Control Field
+    6: Control Field Enter Button - Invokeable with enter key
+    7-10: Radios for each Camera
+    11-12: Selected size up/down
+    13-14: Framerate up/down
+    15: Framerate Diagnostics

@@ -148,7 +148,7 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
         timerecords[num][1] = 0
         framesent += 1
       if time.perf_counter()-lastimesincediag >= 10:
-        avgsize = size/10
+        avgsize = totalsize/10
         fps = framesent/10
         print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, avgsize))
         framesent = 0

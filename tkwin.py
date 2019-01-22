@@ -28,16 +28,18 @@ class TkWin:
         self.root.title = name #Sets the title of the window as the user sees it
         self.root.geometry("{0}x{1}".format(width, height))
         #Lists of different types of widgets
-        self.cameras = []
-        self.localcameras = []
-        self.buttons = []
-        self.textboxes = []
-        self.entries = []
-        self.checkboxes = []
-        self.radiobuttons = []
-        self.comboboxes = []
-        self.listboxes = []
-        self.scales = []
+        self.cameras = {}
+        self.localcameras = {}
+        self.buttons = {}
+        self.textboxes = {}
+        self.entries = {}
+        self.checkboxes = {}
+        self.radiobuttons = {}
+        self.comboboxes = {}
+        self.listboxes = {}
+        self.scales = {}
+        #Objects currently on the grid
+        self.gridded = []
         #Whether the window itself is active
         self.active = True
         #List of all filled points on the window's grid
@@ -71,12 +73,14 @@ class TkWin:
         processMenuHierarchy(self.toplevel, self.menus, self)
         self.root.config(menu=self.toplevel)
 
-    def addCam(self, camnum):
+    def addCam(self, camnum, interface="mainmenu"):
         """
         Tries to add a remote camera to the window; returns False if it fails
         """
+        if interface not in self.cameras:
+            self.cameras[interface] = []
         if visiontable.getBoolean("{0}isactive".format(camnum), False):
-            self.cameras.append(labels.Camera(camnum, self.root))
+            self.cameras[interface].append(labels.Camera(camnum, self.root))
             return True
         return False
         
@@ -86,13 +90,15 @@ class TkWin:
         """
         self.localcameras[camind].color = color
     
-    def addLocalCam(self, camnum):
+    def addLocalCam(self, camnum, interface="mainmenu"):
         """
         Local variant of addCam
         """
+        if interface not in self.localcameras:
+            self.localcameras[interface] = []
         camera = labels.LocalCamera(camnum, self.root)
         if camera.active:
-            self.localcameras.append(camera)
+            self.localcameras[interface].append(camera)
             return True
         else:
             return False
@@ -104,69 +110,96 @@ class TkWin:
         self.cameras[camind].color = color
 
     #Class sends self variable to all commands executed by default: this can be disabled by setting the sendself argument to False
-    def addEntry(self):
+    def addEntry(self, interface="mainmenu"):
         """
-        Adds a button to the class registry
+        Adds a button to the given interface
         """
+        if interface not in self.entries:
+            self.entries[interface] = []
         entry = labels.Entry(self.root)
-        self.entries.append(entry)
+        self.entries[interface].append(entry)
 
     
-    def addButton(self, text, command, partialarg = "*self*"):
+    def addButton(self, text, command, partialarg = "*self*", interface="mainmenu"):
         """
-        Adds a button to the class registry
+        Adds a button to the given interface
         """
+        if interface not in self.buttons:
+            self.buttons[interface] = []
         if partialarg == "*self*":
             partialarg = self
         if partialarg != NOARG:
             command = fts.partial(command, partialarg)
-        self.buttons.append(labels.Button(self.root, text=text, command=command))
+        self.buttons[interface].append(labels.Button(self.root, text=text, command=command))
 
-    def addCheckbox(self, text, onval=True, offval=False):
+    def addCheckbox(self, text, onval=True, offval=False, interface="mainmenu"):
         """
-        Adds a user entry field to the class registry
+        Adds a user entry field to the given interface
         """
-        self.checkboxes.append(labels.Checkbox(self.root, text, onval, offval))
+        if interface not in self.checkboxes:
+            self.checkboxes[interface] = []
+        self.checkboxes[interface].append(labels.Checkbox(self.root, text, onval, offval))
     
-    def addRadioButton(self, buttons):
+    def addRadioButton(self, buttons, interface="mainmenu"):
         """
-        Adds a user entry field to the class registry
+        Adds a user entry field to the given interface
         """
-        self.radiobuttons.append(labels.RadioButton(self.root, buttons))
+        if interface not in self.radiobuttons:
+            self.radiobuttons[interface] = []
+        self.radiobuttons[interface].append(labels.RadioButton(self.root, buttons))
 
-    def addCombobox(self, values=[], onchange=labels.null, partialarg = "*self*"):
+    def addCombobox(self, values=[], onchange=labels.null, partialarg = "*self*", interface="mainmenu"):
         """
-        Adds a user entry field to the class registry
+        Adds a user entry field to the given interface
         """
+        if interface not in self.comboboxes:
+            self.comboboxes[interface] = []
         if partialarg == "*self*":
             partialarg = self
         if partialarg != NOARG:
             command = fts.partial(command, partialarg)
-        self.comboboxes.append(labels.Combobox(self.root, values=values, onchange=command))
+        self.comboboxes[interface].append(labels.Combobox(self.root, values=values, onchange=command))
 
-    def addListbox(self, height, values, multipleselect=False):
+    def addListbox(self, height, values, multipleselect=False, interface="mainmenu"):
         """
-        Adds a user entry field to the class registry
+        Adds a user entry field to the given interface
         """
-        self.listboxes.append(labels.Listbox(self.root, height, values, multipleselect=multipleselect))
+        if interface not in self.listboxes:
+            self.listboxes[interface] = []
+        self.listboxes[interface].append(labels.Listbox(self.root, height, values, multipleselect=multipleselect))
     
-    def addText(self, text):
+    def addText(self, text, interface="mainmenu"):
         """
-        Adds a user entry field to the class registry
+        Adds a user entry field to the given interface
         """
-        self.textboxes.append(labels.Text(self.root, text))
+        if interface not in self.textboxes:
+            self.textboxes[interface] = []
+        self.textboxes[interface].append(labels.Text(self.root, text))
     
-    def addScale(self, length, orient=tk.VERTICAL, start=None, end=None, command=labels.null, variable=False, partialarg = "*self*"):
+    def addScale(self, length, orient=tk.VERTICAL, start=None, end=None, command=labels.null, variable=False, partialarg = "*self*", interface="mainmenu"):
         """
-        Adds a user entry field to the class registry
+        Adds a user entry field to the given interface
         """
+        if interface not in self.scales:
+            self.scales[interface] = []
         if partialarg == "*self*":
             partialarg = self
         if partialarg != NOARG:
             command = fts.partial(command, partialarg)
-        self.scales.append(labels.Scale(self.root, length, orient=orient, start=start, end=end, command=command, variable=variable))
+        self.scales[interface].append(labels.Scale(self.root, length, orient=orient, start=start, end=end, command=command, variable=variable))
     
-    def processGuiMap(self, guimap):
+    def gridWidget(self, widget, column, row, columnspan, rowspan, option=None):
+        """
+        Grids a widget and tracks it in self.gridded
+        """
+        if option:
+            widget.setOnGrid(option = option, column=column, row=row, columnspan=columnspan, rowspan=rowspan)
+            self.gridded.append((widget, option))
+        else:
+            widget.setOnGrid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
+            self.gridded.append((widget,))
+
+    def processGuiMap(self, guimap, guiname):
         """
         Places items on grid based on a dimensioned array with integers standing for different components
         EX:
@@ -179,24 +212,22 @@ class TkWin:
         widgetspans = findWidgetSpans(guimap)
         for num in guimap[1]:
             #Wait to cast num to integer since it needs to match with the dictionary key to access the widget name
-            widget, option = self.getWidget(guimap[1][num])
+            widget, option = self.getWidget(guimap[1][num], guiname)
             num = int(num)
+            column = widgetspans[num][0]
+            row = widgetspans[num][2]
+            columnspan = widgetspans[num][1]-widgetspans[num][0]+1
+            rowspan = widgetspans[num][3]-widgetspans[num][2]+1
+            print(column, row, columnspan, rowspan)
             if option:
                 #Certain widgets, like radios, are gridded differently than other widgets: The first number specifies which set of buttons you refer to, and the second one refers to the button itself
-                widget.setOnGrid(option = option, column = widgetspans[num][0], row = widgetspans[num][2], columnspan = widgetspans[num][1]-widgetspans[num][0]+1, rowspan = widgetspans[num][3]-widgetspans[num][2]+1)
+                self.gridWidget(widget, column = widgetspans[num][0], row = widgetspans[num][2], columnspan = widgetspans[num][1]-widgetspans[num][0]+1, rowspan = widgetspans[num][3]-widgetspans[num][2]+1, option=option)
             else:
-                print("here")
-                print(widgetspans)
-                column = widgetspans[num][0]
-                row = widgetspans[num][2]
-                columnspan = widgetspans[num][1]-widgetspans[num][0]+1
-                rowspan = widgetspans[num][3]-widgetspans[num][2]+1
-                print(column, row, columnspan, rowspan)
-                widget.setOnGrid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
+                self.gridWidget(widget, column=column, row=row, columnspan=columnspan, rowspan=rowspan)
 
-    def getWidget(self, codename):
+    def getWidget(self, codename, guiname):
         """
-        Retrieves a widget based on its gui reference name
+        Retrieves a widget based on its gui reference name and parent interface
         """
         #Seperates widget's end tag from its type indicator
         widgettag = re.sub(r"[a-zA-Z]", "", codename)
@@ -213,17 +244,17 @@ class TkWin:
             option = None
         #Finds widget based on its type
         if widgettype.lower() == "camera":
-            widget = self.cameras[num]
+            widget = self.cameras[guiname][num]
         elif widgettype.lower() == "button":
-            widget = self.buttons[num]
+            widget = self.buttons[guiname][num]
         elif widgettype.lower() == "entry":
-            widget = self.entries[num]
+            widget = self.entries[guiname][num]
         elif widgettype.lower() == "textbox":
-            widget = self.textboxes[num]
+            widget = self.textboxes[guiname][num]
         elif widgettype.lower() == "checkbox":
-            widget = self.checkboxes[num]
+            widget = self.checkboxes[guiname][num]
         elif widgettype.lower() == "radio":
-            widget = self.radiobuttons[num]
+            widget = self.radiobuttons[guiname][num]
         return widget, option
 
     def killLoop(self):
@@ -236,17 +267,16 @@ class TkWin:
         for num in range(camrange):
             self.addCam(num)
 
-    def tearDown(self, lastgui):
+    def tearDown(self):
         """
         Clears the window of all the widgets grided by lastgui
         """
-        for key in lastgui[1]:
-            widgetname = lastgui[1][key]
-            widget, option = self.getWidget(widgetname)
-            if option:
-                widget.ungrid(option)
+        for widget in self.gridded:
+            if len(widget) > 1:
+                widget[0].ungrid(widget[1])
             else:
-                widget.ungrid()
+                widget[0].ungrid()
+        self.gridded.clear()
 
     def emergencyShutdown(self):
         """
@@ -278,14 +308,14 @@ def findWidgetSpans(guimap):
                     lastcolumn = len(row)-row[::-1].index(num)-1
                     numencountered = True
                 elif numencountered:
-                    lastrow = ind+1
+                    lastrow = ind
                     break
-                print("here", len(guimap[0]), ind)
-            if ind == len(guimap[0])-1 and not lastrow:
+            if (ind == len(guimap[0])-1) and (not lastrow):
                 #If on the last row of the map without encountering the number again
                 lastrow = firstrow
         widgetspans[num] = (firstcolumn, lastcolumn, firstrow, lastrow)
         numencountered = False
+        firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
     return widgetspans
 
 def processMenuHierarchy(toplevel, hierarchy, self):
