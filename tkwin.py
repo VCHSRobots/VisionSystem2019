@@ -193,6 +193,8 @@ class TkWin:
             command = fts.partial(command, partialarg)
         self.scales[interface].append(labels.Scale(self.root, length, orient=orient, start=start, end=end, command=command, variable=variable))
     
+    def addWidget(self, widgetname):
+        
     def addGlobalWidget(self, widget, widgettype):
         """
         Adds a widget which isn't associated with any specific interface
