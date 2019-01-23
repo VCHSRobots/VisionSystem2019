@@ -20,6 +20,8 @@ piadr = (piip, 5809)
 myadr = (ip, 5809)
 #Global communications socket
 comsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+#List of valid widget types
+widgettypes = ["camera", "localcamera", "button", "entry", "checkbox", "listbox", "radiobutton", "combobox", "textbox" "scale"]
 
 #Menu Guis
 mainmenu = openGuiFile("mainmenu")

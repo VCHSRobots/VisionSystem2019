@@ -11,6 +11,7 @@ from networktables import NetworkTables as nt
 
 #Local Imports
 import labels
+from globals import visiontable, myadr, piadr, widgettypes
 
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
@@ -18,6 +19,7 @@ ip = "10.44.15.41"
 nt.initialize("roborio-4415-frc.local")
 visiontable = nt.getTable("/vision")
 NOARG = "*None*"
+GLOBAL = "*Global*"
 
 class TkWin:
     def __init__(self, name, width = 100, height = 100, menustructure = {}):
@@ -38,6 +40,8 @@ class TkWin:
         self.comboboxes = {}
         self.listboxes = {}
         self.scales = {}
+        self.vars = {}
+        self.globalwidgets = {}
         #Objects currently on the grid
         self.gridded = []
         #Whether the window itself is active
@@ -109,6 +113,7 @@ class TkWin:
         """
         self.cameras[camind].color = color
 
+    #Widget functions
     #Class sends self variable to all commands executed by default: this can be disabled by setting the sendself argument to False
     def addEntry(self, interface="mainmenu"):
         """
@@ -188,6 +193,17 @@ class TkWin:
             command = fts.partial(command, partialarg)
         self.scales[interface].append(labels.Scale(self.root, length, orient=orient, start=start, end=end, command=command, variable=variable))
     
+    def addGlobalWidget(self, widget, widgettype):
+        """
+        Adds a widget which isn't associated with any specific interface
+        """
+        if isValidWidget(widgettype):
+            if not widgettype in self.globalwidgets:
+                self.globalwidgets[widgettype] = []
+            self.globalwidgets[widgettype]
+        else:
+            raise ValueError("Invalid Widget Type: {0}".format(widgettype))
+
     def gridWidget(self, widget, column, row, columnspan, rowspan, option=None):
         """
         Grids a widget and tracks it in self.gridded
@@ -199,13 +215,13 @@ class TkWin:
             widget.setOnGrid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
             self.gridded.append((widget,))
 
-    def ungridWidget(self, widget, option):
+    def ungridWidget(self, widget, option=None):
         """
         Ungrids a widget and returns its location
         """
         location = ()
         if option:
-            location = widget.location[optiom]
+            location = widget.location[option]
             widget.ungrid(option)
         else:
             location = widget.location
@@ -218,6 +234,8 @@ class TkWin:
         """
         location = self.ungridWidget(replaced)
         self.gridWidget(replacer, location[0], location[1], location[2], location[3], option=option)
+
+    #Random Window Variable Functions
 
     def processGuiMap(self, guimap, guiname):
         """
@@ -309,6 +327,12 @@ class TkWin:
 
 def null(self):
     pass
+
+def isValidWidget(widgettype):
+    if widgettype in widgettypes:
+        return True
+    else:
+        raise ValueError("Invalid Widget Type: {0}".format(widgettype))
 
 def findWidgetSpans(guimap):
     """
