@@ -32,7 +32,7 @@ table = nt.getTable("/vision")
 
 def setupServerSocket(socktype = UTP):
   """
-  Sets up and returns a ready to use socket bound to the ip and port arguments. Only needed for tcp
+  Sets up and returns a ready to use socket bound to the ip and port arguments
   """
   sock = socket.socket(socket.AF_INET, socktype)
   #Not Complete Yet
@@ -133,7 +133,7 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
   #The last time since diagnostic data was printed
   lastimesincediag = 0
   framesent = 0
-  sizes = []
+  totalsize = 0
   while True:
     for num in cams:
       camvals = pollCamVars(num)
@@ -143,20 +143,16 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
       timerecords[num][1] += time.perf_counter()-timerecords[num][0] #Compares current time to time since the last time update to see how much time has passed
       timerecords[num][0] = time.perf_counter()
       if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
-        print("Sent")
         size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
-        sizes.append(size)
+        totalsize += size
         timerecords[num][1] = 0
         framesent += 1
       if time.perf_counter()-lastimesincediag >= 10:
-        if sizes:
-          avgsize = sum(sizes)/len(sizes)
-        else:
-          avgsize = 0
+        avgsize = totalsize/10
         fps = framesent/10
         print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, avgsize))
-        sizes.clear()
         framesent = 0
+        totalsize = 0
         lastimesincediag = time.perf_counter()
     if cv2.waitKey(1) == 0:
       sock.close()

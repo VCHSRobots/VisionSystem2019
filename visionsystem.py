@@ -8,6 +8,8 @@ import time
 import tkinter as tk
 from networktables import NetworkTables as nt
 
+import menus
+
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
 piip = "10.44.15.59"
@@ -47,44 +49,21 @@ def systemThread(self):
     """
     Thread fucntion to be called by the tkinter class
     """
-    #TODO: Make bound socket listener in case a socket gets overloaded
-    matchstarted = False
-    while not matchstarted:
-        pass
-    matchLoop(self)
-    
-
-def matchLoop(self):
-    """
-    Initiates the main vision system
-    """
-    sendStartSignal()
-    while True:
-        while self.active:
-            activecams = getActiveCams(len(self.cameras))
-            for activeind in activecams:
-                self.cameras[activeind].updateImgOnLabel()
+    pass
 
 def startSystem():
     """
     Initiates the vision system application for the 2019 First Robotics Competition
     """
-    win = tkwin.TkWin("Vision System")
-    camnums = getActiveCams(9)
-    for camnum in camnums:
-        win.addCam(camnum)
+    menustructure = {"Test": {"Do Nothing": menus.null, "Switch Menus_*self*": menus.matchMenu}}
+    win = tkwin.TkWin("Vision System", menustructure=menustructure)
+    #Sets the function to be called when window is initated
     win.setThreadLoop(systemThread)
-    #TODO: Choose Gui files based on selecttion options such as avalible cameras
-    guifile = open("test.gui")
-    guimap = json.load(guifile)
-    guifile.close()
-    win.processGuiMap(guimap)
+    #Sets up the main menu
+    menus.configureMainMenu(win)
+    win.processGuiMap(menus.mainmenu, "mainmenu")
     win.runWin()
 
-def configButton(root, text, command):
-    """
-    Adds a button to the given root
-    """
 
 def getActiveCams(numrange):
     """
