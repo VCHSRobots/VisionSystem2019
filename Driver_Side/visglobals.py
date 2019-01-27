@@ -8,7 +8,7 @@ import tkwin as win
 from networktables import NetworkTables as nt
 
 def openGuiFile(name):
-  guifile = open("{0}.gui".format(name))
+  guifile = open("./Guis/{0}.gui".format(name))
   gui = json.load(guifile)
   guifile.close()
   return gui

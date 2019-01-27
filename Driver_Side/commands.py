@@ -3,8 +3,8 @@
 
 import time
 
-import globals
-from globals import comsock, visiontable
+import visglobals
+from visglobals import comsock, visiontable, piadr
 
 def startMatch(self):
     """
@@ -23,7 +23,7 @@ def swapOutCam(self):
     pass
 
 def sendStartSignal(sock):
-    sock.sendto(b"i", globals.piadr)
+    sock.sendto(b"i", piadr)
 
 def matchLoop(self, timeout=180):
     starttime = time.perf_counter()
