@@ -23,7 +23,7 @@ def mainMenu(self):
     """
     global currentinterface
     while currentinterface == "mainmenu":
-        self.entries["mainmenu"][0] = 
+        pass
 
 def settingsMenu(self):
     """

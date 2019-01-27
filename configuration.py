@@ -7,8 +7,8 @@ import time
 import tkwin as win
 
 import commands
-import globals
-from globals import visiontable, guimaps
+import visglobals
+from visglobals import visiontable, guimaps
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
@@ -17,13 +17,12 @@ configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecam
 #Interface Configuration Functions
 def configureMainMenu(self):
     global configwascalled
-    self.addButton("Start Match!", commands.startMatch, interface="mainmenu")
-    self.addButton("Exit", self.root.quit, partialarg=win.NOARG, interface="mainmenu")
+    self.addButton(text = "Start Match!", command = commands.startMatch, partialarg = win.SELF, interface = "mainmenu")
+    self.addWidget(text = "Exit", command = self.root.quit, interface = "mainmenu")
     configwascalled["mainmenu"] = True
 
 def configureSettingsMenu(self):
     global configwascalled
-    self.add
     configwascalled["settings"] = True
 
 def configureMatchInterfaces(self):
@@ -33,19 +32,17 @@ def configureMatchInterfaces(self):
     global configwascalled
     cams = commands.getActiveCams(9)
     for camnum in cams:
-        self.addCam(cams[camnum], interface="match") #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
+        self.addCamera(widget = cams[camnum], interface="match") #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
     shareMatchCameras(self) #Copies the camera objects to other interfaces so they can be gridded
     configureOneCamMatch(self)
     configureMultiViewMatch(self)
     configwascalled["match"] = True
 
 def configureOneCamMatch(self):
+    #Configuration only to be called by configureMatchInterfaces
     global configwascalled
-    cams = commands.getActiveCams(9)
-    for camnum in cams:
-        self.addCam(cams[camnum], interface="onecammatch")
-    self.addButton("Switch Cam", commands.swapOutCam, interface="onecammatch")
-    self.addEntry(interface="onecammatch")
+    self.addButton("Switch Cam", commands.swapOutCam, partialarg = win.SELF, interface = "onecammatch")
+    self.addEntry(interface = "onecammatch")
     configwascalled["onecammatch"] = True
 
 def configureMultiViewMatch(self):
@@ -58,8 +55,8 @@ configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsM
 def shareMatchCameras(self):
     matchinters = ["onecammatch", "multiview"]
     for inter in matchinters:
-        if not inter in self.cameras:
-            self.cameras[inter] = []
-    for camera in self.cameras["match"]:
+        if not "camera" in self.widgets[inter]:
+            self.widgets[inter]["camera"] = []
+    for camera in self.widgets["match"]["camera"]:
         for inter in matchinters:
-            self.cameras[inter].append(camera)
+            self.widgets[inter]["camera"].append(camera)

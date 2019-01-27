@@ -11,7 +11,7 @@ from networktables import NetworkTables as nt
 
 #Local Imports
 import labels
-from globals import visiontable, myadr, piadr, widgettypes
+from visglobals import visiontable, myadr, piadr, widgettypes
 
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
@@ -42,8 +42,6 @@ class TkWin:
     self.listboxes = {}
     self.scales = {}
     self.vars = {}
-    self.widgets
-    self.globalwidgets = {}
     #Objects currently on the grid
     self.gridded = []
     #Whether the window itself is active
@@ -78,18 +76,14 @@ class TkWin:
     self.toplevel = tk.Menu(self.root)
     processMenuHierarchy(self.toplevel, self.menus, self)
     self.root.config(menu=self.toplevel)
-  
-  #Depreciated - use addWidget with approprite arguments instead
-  def addCam(self, camnum, interface="mainmenu"):
+
+  def addCamera(self, camnum, interface="mainmenu"):
     """
     Tries to add a remote camera to the window; returns False if it fails
     """
     if interface not in self.cameras:
       self.cameras[interface] = []
-    if visiontable.getBoolean("{0}isactive".format(camnum), False):
-      self.cameras[interface].append(labels.Camera(camnum, self.root))
-      return True
-    return False
+    self.cameras[interface].append(labels.Camera(camnum, self.root))
 
   def setCamColor(self, camind, color):
     """
@@ -128,15 +122,15 @@ class TkWin:
     self.entries[interface].append(entry)
 
 
-  def addButton(self, text, command, partialarg = "*self*", interface="mainmenu"):
+  def addButton(self, text, command, partialarg = None, interface="mainmenu"):
     """
     Adds a button to the given interface
     """
     if interface not in self.buttons:
       self.buttons[interface] = []
-    if partialarg == "*self*":
+    if partialarg == SELF:
       partialarg = self
-    if partialarg != NOARG:
+    if partialarg != None:
       command = fts.partial(command, partialarg)
     self.buttons[interface].append(labels.Button(self.root, text=text, command=command))
 
@@ -196,22 +190,6 @@ class TkWin:
       command = fts.partial(command, partialarg)
     self.scales[interface].append(labels.Scale(self.root, length, orient=orient, start=start, end=end, command=command, variable=variable))
 
-  def addWidget(self, widget, widgettype, interface, **kwargs):
-    widget = makeWidget(self.root, widgettype, kwargs)
-    if isValidWidget(widgetname):
-      if not widgettype in self.widgets[interface]:
-        self.widgets[interface][widgettype] = []
-      self.widgets[interface][widgettype].append(widget)
-
-  def addGlobalWidget(self, widget, widgettype):
-    """
-    Adds a widget which isn't associated with any specific interface
-    """
-    if isValidWidget(widgettype):
-      if not widgettype in self.globalwidgets:
-        self.globalwidgets[widgettype] = []
-      self.globalwidgets[widgettype]
-
   def gridWidget(self, widget, column, row, columnspan, rowspan, option=None):
     """
     Grids a widget and tracks it in self.gridded
@@ -236,7 +214,7 @@ class TkWin:
       widget.ungrid()
     return location
 
-  def replaceWidget(self, replaced, replacer, option=None):
+  def replaceWidget(self, replaced, replacer, option = None):
     """
     Ungrids the replaced widget and puts replacer in its place
     """
@@ -244,6 +222,11 @@ class TkWin:
     self.gridWidget(replacer, location[0], location[1], location[2], location[3], option=option)
 
   #Random Window Variable Functions
+  def addVariable(self, name, value, interface = GLOBAL):
+    self.vars[interface][name] = value
+
+  def getVariable(self, name, interface = GLOBAL):
+    return self.vars[interface][name]
 
   def processGuiMap(self, guimap, guiname):
     """
@@ -279,9 +262,27 @@ class TkWin:
     #Finds widget based on its type
     if isValidWidget(widgettype):
       if option:
-        widget = self.widgets[widgettype][guiname][num][option]
+        if widgettype == "listbox":
+          widget = self.listboxes[guiname][num][option]
       else:
-        widget = self.widgets[widgettype][guiname][num]
+        if widgettype == "camera":
+          widget = self.cameras[guiname][num]
+        elif widgettype == "localcamera":
+          widget = self.localcameras[guiname][num]
+        elif widgettype == "entry":
+          widget = self.entries[guiname][num]
+        elif widgettype == "checkbox":
+          widget = self.checkboxes[guiname][num]
+        elif widgettype == "radiobutton":
+          widget = self.radiobuttons[guiname][num]
+        elif widgettype == "combobox":
+          widget = self.comboboxes[guiname][num]
+        elif widgettype == "textbox":
+          widget = self.textboxes[guiname][num]
+        elif widgettype == "scale":
+          widget = self.scales[guiname][num]
+    return widget
+        
     return widget, option
 
   def killLoop(self):
@@ -319,8 +320,8 @@ def null(self):
   
 def splitWidgetName(widgetname):
   #Seperates widget's end tag from its type indicator
-  widgettag = re.sub(r"[a-zA-Z]", "", codename)
-  widgettype = re.sub(r"[0-9_]", "", codename)
+  widgettag = re.sub(r"[a-zA-Z]", "", widgetname)
+  widgettype = re.sub(r"[0-9_]", "", widgetname)
   #Detects if the tag has an optional suffix
   if "_" in widgettag:
     num = ""
@@ -366,54 +367,6 @@ def findWidgetSpans(guimap):
     numencountered = False
     firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
   return widgetspans
-    
-def makeWidget(root, widgettype, kwargs):
-  if widgettype == "camera":
-    widget = labels.Camera(kwargs["camnum"], root)
-  elif widgettype == "localcamera":
-    widget = labels.LocalCamera(kwargs["camnum"], root)
-  elif widgettype == "button":
-    if "partial" in kwargs:
-      kwargs["command"] = checkForPartial(kwargs["command"], kwargs["partial"])
-    widget = labels.Button(root, text=kwargs["text"], command=kwargs["command"]))
-  elif widgettype == "entry":
-    widget = labels.Entry(root)
-  elif widgettype == "textbox":
-    widget = labels.Text(root, kwargs["text"])
-  elif widgettype == "combobox":
-    if not "command" in kwargs:
-      kwargs["command"] = null
-    widget = labels.Combobox(root, values=kwargs["values"], onchange=kwargs["command"])
-  elif widgettype == "checkbox":
-    if not "onvalue" in kwargs:
-      kwargs["onvalue"] = True
-    if not "offvalue" in kwargs:
-      kwargs["offvalue"] = False
-    widget = labels.Checkbox(root, kwargs["text"], kwargs["onvalue"], kwargs["offvalue"])
-  elif widgettype == "listbox":
-    if not "multipleselect" in kwargs:
-      kwargs["multipleselect"] = False
-    widget = labels.Listbox(root, kwargs["height"], kwargs["values"], multipleselect=kwargs["multipleselect"])
-  elif widgettype == "radio":
-    widget = labels.RadioButton(root, kwargs["buttons"])
-  elif widgettype == "scale":
-    if "orient" not in kwargs:
-      kwargs["orient"] = tk.VERTICAL
-    if "start" not in kwargs or "end" not in kwargs:
-      if "start" not in kwargs:
-        kwargs["start"] = kwargs["end"]-kwargs["length"]
-      elif "end" not in kwargs:
-        kwargs["end"] = kwargs["start"]+kwargs["length"]
-      else:
-        kwargs["start"] = 1
-        kwargs["end"] = kwargs["length"]
-    if "command" not in kwargs:
-      kwargs["command"] = null
-    if "variable" in kwargs:
-      widget = labels.Scale(root, kwargs["length"], orient=kwargs["orient"], start=kwargs["start"], end=kwargs["end"], command=kwargs["command"], variable=kwargs["variable"])
-    else:
-      widget = labels.Scale(root, kwargs["length"], orient=kwargs["orient"], start=kwargs["start"], end=kwargs["end"], command=kwargs["command"])
-  return widget
     
 def checkForPartial(func, partial, self=None):
   if partial == SELF:

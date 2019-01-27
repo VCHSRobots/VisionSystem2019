@@ -8,10 +8,13 @@ import tkwin as win
 from networktables import NetworkTables as nt
 
 def openGuiFile(name):
-    guifile = open("{0}.gui".format(name))
-    gui = json.load(guifile)
-    guifile.close()
-    return gui
+  guifile = open("{0}.gui".format(name))
+  gui = json.load(guifile)
+  guifile.close()
+  return gui
+
+def null():
+  pass
 
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
