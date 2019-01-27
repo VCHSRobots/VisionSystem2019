@@ -18,7 +18,7 @@ def null():
 
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
-piip = "10.44.15.59"
+piip = "10.44.15.62"
 piadr = (piip, 5809)
 myadr = (ip, 5809)
 #Global communications socket

@@ -20,7 +20,7 @@ RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
-piip = "10.44.15.59"
+piip = "10.44.15.62"
 dwidth = 400
 dheight = 400
 defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
