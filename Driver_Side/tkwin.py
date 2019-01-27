@@ -84,6 +84,7 @@ class TkWin:
     if interface not in self.cameras:
       self.cameras[interface] = []
     self.cameras[interface].append(labels.Camera(camnum, self.root))
+    print(self.cameras)
 
   def setCamColor(self, camind, color):
     """
@@ -258,6 +259,7 @@ class TkWin:
     """
     Retrieves a widget based on its gui reference name and parent interface
     """
+    print(widgetname)
     widgettype, num, option = splitWidgetName(widgetname)
     #Finds widget based on its type
     if isValidWidget(widgettype):
@@ -269,6 +271,8 @@ class TkWin:
           widget = self.cameras[guiname][num]
         elif widgettype == "localcamera":
           widget = self.localcameras[guiname][num]
+        elif widgettype == "button":
+          widget = self.buttons[guiname][num]
         elif widgettype == "entry":
           widget = self.entries[guiname][num]
         elif widgettype == "checkbox":
@@ -281,8 +285,6 @@ class TkWin:
           widget = self.textboxes[guiname][num]
         elif widgettype == "scale":
           widget = self.scales[guiname][num]
-    return widget
-        
     return widget, option
 
   def killLoop(self):
@@ -293,7 +295,7 @@ class TkWin:
     Checks for active cams on the network
     """
     for num in range(camrange):
-      self.addCam(num)
+      self.addCamera(num)
 
   def tearDown(self):
     """

@@ -19,8 +19,10 @@ def null():
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
 piip = "10.44.15.62"
+internip = "192.168.1.103"
 piadr = (piip, 5809)
 myadr = (ip, 5809)
+internadr = (internip, 4000)
 #Global communications socket
 comsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #List of valid widget types

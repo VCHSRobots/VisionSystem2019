@@ -18,7 +18,7 @@ configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecam
 def configureMainMenu(self):
     global configwascalled
     self.addButton(text = "Start Match!", command = commands.startMatch, partialarg = win.SELF, interface = "mainmenu")
-    self.addWidget(text = "Exit", command = self.root.quit, interface = "mainmenu")
+    self.addButton(text = "Exit", command = self.root.quit, interface = "mainmenu")
     configwascalled["mainmenu"] = True
 
 def configureSettingsMenu(self):
@@ -55,8 +55,8 @@ configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsM
 def shareMatchCameras(self):
     matchinters = ["onecammatch", "multiview"]
     for inter in matchinters:
-        if not "camera" in self.widgets[inter]:
-            self.widgets[inter]["camera"] = []
-    for camera in self.widgets["match"]["camera"]:
+        if not inter in self.cameras:
+            self.cameras[inter] = []
+    for camera in self.cameras["match"]:
         for inter in matchinters:
-            self.widgets[inter]["camera"].append(camera)
+            self.cameras[inter].append(camera)

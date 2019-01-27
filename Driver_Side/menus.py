@@ -6,15 +6,16 @@ import socket
 import time
 import tkwin as win
 
-import globals
+import visglobals
+import commands
 import configuration as config
-from globals import visiontable, guimaps
+from visglobals import visiontable, guimaps
 
 #Global settings dict
 global settings
 settings = {"matchtype": "multiview"}
 global currentinterface
-currentinterface = "mainmetu"
+currentinterface = "mainmenu"
 
 #Functions to be called when a menu is invoked
 def mainMenu(self):
@@ -38,6 +39,10 @@ def matchMenu(self):
     Main Menu Interface
     """
     global currentinterface
+    if not config.configwascalled["match"]:
+        config.configureMatchInterfaces(self)
+    self.switchUi("match")
+    commands.startMatch(self)
     while currentinterface == "match":
         pass
 
