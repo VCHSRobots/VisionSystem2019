@@ -1,13 +1,19 @@
 #sockettables.py: The api for a socket-based NetworkTables Substitute
 #1/29/2019 HP
 
+#Module Imports
 import socket
+import logs
+import sys
+
+#Local Imports
 import threads
 
-from visglobals import myadr, internadr
-#Myadr is the address of the running client
-#Internadr is this api's address
-
+myip = "10.44.15.62"
+deskip = "10.44.15.41"
+myadr = (myip, 5809)
+internadr = (myip, 5810)
+deskadr = (deskip, 5809)
 timeout = 180
 
 UDP = socket.SOCK_DGRAM
@@ -71,11 +77,6 @@ class SocketTable:
     pass
     
   def setMaxSize(self, size):
-    self.socket.sendto(b"set buffersize: {}".format(size))
-    
-def test():
-  table = SocketTable()
-  table.startSocketTables()
-  print("Here")
-  table.putString("Hello", "World")
-  print(table.getString("Hello", "World"))
+    self.socket.sendto(b"set maxsize: {}".format(size), myadr)
+  
+

@@ -13,9 +13,13 @@ import tkinter as tk
 from tkinter import ttk
 from PIL import Image
 from PIL import ImageTk
-from networktables import NetworkTables as nt
 
-from visglobals import visiontable, ip
+#Local Imports
+import sockettables
+from visglobals import ip
+
+visiontable = sockettables.SocketTable()
+visiontable.startSocketTables()
 
 def null(self):
     pass

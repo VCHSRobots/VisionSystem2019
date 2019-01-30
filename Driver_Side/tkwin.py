@@ -11,13 +11,12 @@ from networktables import NetworkTables as nt
 
 #Local Imports
 import labels
-from visglobals import visiontable, myadr, piadr, widgettypes
+from visglobals import myadr, piadr, widgettypes
 
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
 ip = "10.44.15.41"
-nt.initialize("roborio-4415-frc.local")
-visiontable = nt.getTable("/vision")
+visiontable = labels.visiontable
 NOARG = "*None*"
 GLOBAL = "*Global*"
 SELF = "*Self*"

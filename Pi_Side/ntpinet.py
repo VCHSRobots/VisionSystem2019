@@ -1,4 +1,4 @@
-#pinet.py: Hosts socket for pi camera using UTP or TCP, using SocketTables instead of NetworkTables
+#ntpinet.py: Old version of pinet with networktables
 #11/17/2018 HP
 
 #Module Imports
@@ -11,7 +11,7 @@ import io
 import sys
 import numpy as np
 from PIL import Image
-import sockettables
+from networktables import NetworkTables as nt
 
 #Globals
 TCP = socket.SOCK_STREAM
@@ -26,8 +26,9 @@ dheight = 400
 defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
 #Camera value keys which need to be cast to integers
 intvals = ["width", "height", "compression", "quality"]
-table = sockettables.SocketTable()
-table.startSocketTables()
+robotip = "roborio-4415-frc.local"
+nt.initialize(robotip)
+table = nt.getTable("/vision")
 
 def setupServerSocket(socktype = UTP):
   """
@@ -39,7 +40,7 @@ def setupServerSocket(socktype = UTP):
   #   sock.listen()
   return sock
 
-def exportImage(camera, camnum, sock, camvals=defaultcamvals):
+def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
   """
   Reads, sterilizes, and exports an image from the OpenCV camera
   """
@@ -167,7 +168,7 @@ def runMatch(time=180):
   cams = scanForCams(numrange=(0,9))
   for camnum in cams:
     table.putBoolean("{0}isactive".format(camnum), True)
-    exportImage(cams[camnum], camnum, sock = sock)
+    exportImage(cams[camnum], camnum, sock = sock, table = table)
   #Opens bound socket and listens for start signal
   listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   listener.bind((piip, 5800))
@@ -188,7 +189,7 @@ def test(time=180):
   for camnum in cams:
     print(table.putBoolean("{0}isactive".format(int(camnum)), True))
     print("Camnum: ", camnum)
-    exportImage(cams[camnum], camnum, sock = sock)
+    exportImage(cams[camnum], camnum, sock = sock, table = table)
   #Exports vision system stream
   try:
     exportManagedStream(sock, cams, ip=ip, timeout=time)

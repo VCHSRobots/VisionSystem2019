@@ -4,11 +4,13 @@
 import json
 import socket
 import time
-import tkwin as win
 
+import tkwin as win
 import commands
 import visglobals
-from visglobals import visiontable, guimaps
+from visglobals import guimaps
+
+visiontable = win.visiontable
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called

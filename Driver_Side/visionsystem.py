@@ -11,7 +11,9 @@ from networktables import NetworkTables as nt
 import menus
 import configuration
 import visglobals
-from visglobals import visiontable, ip, piip, null, myadr, comsock
+from visglobals import ip, piip, null, myadr, comsock
+
+visiontable = configuration.visiontable
 
 def testLoop(self):
     """

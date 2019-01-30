@@ -4,7 +4,6 @@
 import json
 import socket
 import time
-import tkwin as win
 from networktables import NetworkTables as nt
 
 def openGuiFile(name):
@@ -19,10 +18,9 @@ def null():
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
 piip = "10.44.15.62"
-internip = "192.168.1.103"
 piadr = (piip, 5809)
 myadr = (ip, 5809)
-internadr = (internip, 4000)
+internadr = (ip, 5810)
 #Global communications socket
 comsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #List of valid widget types
@@ -34,6 +32,6 @@ settingsgui = openGuiFile("settings")
 onecammatch = openGuiFile("onecammatch")
 guimaps = {"mainmenu": mainmenu, "settings": settingsgui, "onecammatch": onecammatch}
 
-#NetworkTables
-nt.initialize("roborio-4415-frc.local")
-visiontable = nt.getTable("/vision")
+##NetworkTables
+#nt.initialize("roborio-4415-frc.local")
+#visiontable = nt.getTable("/vision")
