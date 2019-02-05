@@ -16,10 +16,7 @@ from PIL import ImageTk
 
 #Local Imports
 import sockettables
-from visglobals import ip
-
-visiontable = sockettables.SocketTable()
-visiontable.startSocketTables()
+from visglobals import ip, visiontable
 
 def null(self):
     pass
@@ -52,7 +49,9 @@ class Widget:
 
     def ungrid(self):
         self.widget.grid_forget()
+        location = self.location
         self.location = ()
+        return location
 
 class Camera(Widget):
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
@@ -70,7 +69,7 @@ class Camera(Widget):
         self.compression = 6
         self.quality = 95
         self.maxsize = 50000
-        self.updateCamOverNetwork()
+        self.updateOverNetwork()
         self.widget = tk.Label(root)
         #Makes a listener socket bound to this specific camera
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -85,7 +84,7 @@ class Camera(Widget):
         self.widget.config(image=image)
         self.widget.image = image
     
-    def updateCamOverNetwork(self):
+    def updateOverNetwork(self):
         """
         Updates Networktable data about the camera
         """
@@ -94,16 +93,15 @@ class Camera(Widget):
         visiontable.putNumber("{0}height".format(self.camnum), self.height)
         visiontable.putBoolean("{0}color".format(self.camnum), self.color)
         visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
-        visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
+        #visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
         visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
         visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
-        visiontable.putNumber("{0}maxsize".format(self.camnum), self.maxsize)
         
     def getImgFromNetwork(self):
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
-        img = self.sock.recv(self.maxsize)
+        img = self.sock.recv(500000)
         img = self.processIncomingImg(img)
         return img
     

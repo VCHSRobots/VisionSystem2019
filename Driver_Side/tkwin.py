@@ -7,16 +7,14 @@ import networktables
 import re #Used for string processing
 import functools as fts
 import tkinter as tk
-from networktables import NetworkTables as nt
 
 #Local Imports
 import labels
-from visglobals import myadr, piadr, widgettypes
+from visglobals import myadr, piadr, widgettypes, visiontable
 
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
 ip = "10.44.15.41"
-visiontable = labels.visiontable
 NOARG = "*None*"
 GLOBAL = "*Global*"
 SELF = "*Self*"
@@ -122,7 +120,7 @@ class TkWin:
     self.entries[interface].append(entry)
 
 
-  def addButton(self, text, command, partialarg = None, interface="mainmenu"):
+  def addButton(self, text, command, partialarg = SELF, interface="mainmenu"):
     """
     Adds a button to the given interface
     """

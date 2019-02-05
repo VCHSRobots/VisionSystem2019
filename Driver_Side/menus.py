@@ -16,6 +16,7 @@ global settings
 settings = {"matchtype": "multiview"}
 global currentinterface
 currentinterface = "mainmenu"
+matchtime = 180
 
 #Functions to be called when a menu is invoked
 def mainMenu(self):
@@ -41,18 +42,28 @@ def matchMenu(self):
     global currentinterface
     if not config.configwascalled["match"]:
         config.configureMatchInterfaces(self)
-    self.switchUi("match")
+    if settings["matchtype"] == "multiview":
+        switchUi(self, "multiview")
+    elif settings["matchtype"] == "onecammatch":
+        switchUi(self, "onecammatch")
     commands.startMatch(self)
-    while currentinterface == "match":
-        pass
+    if settings["matchtype"] == "multiview":
+        multiviewMenu(self)
 
 def multiviewMenu(self):
     """
     Multiview Menu Interface
     """
     global currentinterface
-    while currentinterface == "multiview":
-        pass
+    starttime = time.perf_counter()
+    commands.setupMultiview(self)
+    timeleft = 180
+    while timeleft < 0:
+        timepassed = time.perf_counter()-starttime
+        timeleft = matchtime-timepassed
+        commands.setRemainingTime(self, timeleft)
+        commands.matchLoop(self)
+
 
 #Ui Management Functions
 def switchUi(self, guiname):

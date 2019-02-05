@@ -1,4 +1,4 @@
-#configuration.py: Configures the given window with the widgets interfaces depend on
+#configuration.py: Configures the given window with the widgets it depends on
 #HP 1/21/2019
 
 import json
@@ -7,10 +7,10 @@ import time
 
 import tkwin as win
 import commands
+import configuration as config
+import menus
 import visglobals
-from visglobals import guimaps
-
-visiontable = win.visiontable
+from visglobals import guimaps, visiontable
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
@@ -19,7 +19,7 @@ configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecam
 #Interface Configuration Functions
 def configureMainMenu(self):
     global configwascalled
-    self.addButton(text = "Start Match!", command = commands.startMatch, partialarg = win.SELF, interface = "mainmenu")
+    self.addButton(text = "Start Match!", command = startMultiviewMatch, partialarg = win.SELF, interface = "mainmenu")
     self.addButton(text = "Exit", command = self.root.quit, interface = "mainmenu")
     configwascalled["mainmenu"] = True
 
@@ -49,6 +49,27 @@ def configureOneCamMatch(self):
 
 def configureMultiViewMatch(self):
     global configwascalled
+    self.addButton("Select Front", commands.stageFrontCam, interface = "multiview")
+    self.addButton("Select Back", commands.stageBackCam, interface = "multiview")
+    self.addButton("Select Left", commands.stageLeftCam, interface = "multiview")
+    self.addButton("Select Right", commands.stageRightCam, interface = "multiview")
+    self.addButton("Select All", commands.stageAllCams, interface = "multiview")
+    self.addButton("Select Mains", commands.stageMainCams, interface = "multiview")
+    self.addButton("Select Sides", commands.stageSubCams, interface = "multiview")
+    self.addButton("Deactivate", commands.toggleActivity, interface = "multiview")
+    self.addButton("Framerate Up", commands.increaseFramerate, interface = "multiview")
+    self.addButton("Framerate Down", commands.decreaseFramerate, interface = "multiview")
+    self.addButton("Increase Quality", commands.increaseQuality, interface = "multiview")
+    self.addButton("Decrease Quality", commands.decreaseQuality, interface = "multiview")
+    self.addButton("Black & White", commands.toggleColor, interface = "multiview")
+    self.addText("All Cameras Staged", interface = "multiview")
+    self.addText("All Cameras Active", interface = "multiview")
+    self.addText("Quality Level: Default", interface = "multiview")
+    self.addText("Color Mode: RGB", interface = "multiview")
+    self.addText("15 FPS", interface = "multiview")
+    self.addText("Adjust Framerate", interface = "multiview")
+    self.addText("Adjust Quality", interface = "multiview")
+    self.addText("EPIC ROBOTZ Vision System: Crowded Interface Edition!", interface = "multiview")
     configwascalled["multiview"] = True
 
 configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, "match": configureMatchInterfaces}
@@ -62,3 +83,8 @@ def shareMatchCameras(self):
     for camera in self.cameras["match"]:
         for inter in matchinters:
             self.cameras[inter].append(camera)
+
+def startMultiviewMatch(self):
+    menus.matchMenu(self)
+
+

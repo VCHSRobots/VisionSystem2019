@@ -32,6 +32,6 @@ settingsgui = openGuiFile("settings")
 onecammatch = openGuiFile("onecammatch")
 guimaps = {"mainmenu": mainmenu, "settings": settingsgui, "onecammatch": onecammatch}
 
-##NetworkTables
-#nt.initialize("roborio-4415-frc.local")
-#visiontable = nt.getTable("/vision")
+#NetworkTables
+nt.initialize("roborio-4415-frc.local")
+visiontable = nt.getTable("/vision")
