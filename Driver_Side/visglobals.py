@@ -7,6 +7,7 @@ import time
 from networktables import NetworkTables as nt
 
 def openGuiFile(name):
+  print(name)
   guifile = open("./Guis/{0}.gui".format(name))
   gui = json.load(guifile)
   guifile.close()
@@ -17,7 +18,7 @@ def null():
 
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 ip = "10.44.15.41"
-piip = "10.44.15.62"
+piip = "10.44.15.6"
 piadr = (piip, 5809)
 myadr = (ip, 5809)
 internadr = (ip, 5810)
@@ -27,10 +28,8 @@ comsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 widgettypes = ["camera", "localcamera", "button", "entry", "checkbox", "listbox", "radiobutton", "combobox", "textbox" "scale"]
 
 #Menu Guis
-mainmenu = openGuiFile("mainmenu")
-settingsgui = openGuiFile("settings")
-onecammatch = openGuiFile("onecammatch")
-guimaps = {"mainmenu": mainmenu, "settings": settingsgui, "onecammatch": onecammatch}
+mapnames = ["mainmenu", "settings", "onecammatch", "multiview"]
+guimaps = {mapname: openGuiFile(mapname) for mapname in mapnames}
 
 #NetworkTables
 nt.initialize("roborio-4415-frc.local")

@@ -74,10 +74,12 @@ class TkWin:
     processMenuHierarchy(self.toplevel, self.menus, self)
     self.root.config(menu=self.toplevel)
 
-  def addCamera(self, camnum, interface="mainmenu"):
+  def addCamera(self, camnum, interface="mainmenu", widget = None):
     """
     Tries to add a remote camera to the window; returns False if it fails
     """
+    if widget:
+      self.cameras[interface].append(widget)
     if interface not in self.cameras:
       self.cameras[interface] = []
     self.cameras[interface].append(labels.Camera(camnum, self.root))

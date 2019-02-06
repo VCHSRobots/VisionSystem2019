@@ -3,6 +3,7 @@
 
 import socket
 import threads
+import queue
 
 from visglobals import myadr, internadr
 #Myadr is the address of the running client
@@ -15,8 +16,9 @@ TCP = socket.SOCK_STREAM
 
 class SocketTable:
   def __init__(self, socktype = UDP):
-    self.socket = socket.socket(socket.AF_INET, socktype)
-    self.socket.bind(internadr)
+    # self.socket = socket.socket(socket.AF_INET, socktype)
+    # self.socket.bind(internadr)
+    self.q = queue.Queue()
     self.thread = threads.SocketThread(1, "", 1, timeout = timeout)
 
   def startSocketTables(self):
@@ -25,18 +27,19 @@ class SocketTable:
   def putNumber(self, key, value):
     string = "put {}: {}".format(key, value).encode()
     print(string, myadr)
-    return self.socket.sendto(string, myadr)
+    self.socket.sendto(string, myadr)
     
   def putString(self, key, value):
     string = "put {}: {}".format(key, value).encode()
     print(string, myadr)
-    return self.socket.sendto(string, myadr)
+    self.socket.sendto(string, myadr)
 
   def putBoolean(self, key, value):
     string = "put {}: {}".format(key, value).encode()
     print(string, myadr)
-    return self.socket.sendto(string, myadr)
+    self.socket.sendto(string, myadr)
   
+  #Queue implementing left off here
   def putTable(self, name):
     pass
     

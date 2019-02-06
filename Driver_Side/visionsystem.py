@@ -58,7 +58,7 @@ def startSystem():
     win.setThreadLoop(systemThread)
     #Sets up the main menu
     configuration.configureMainMenu(win)
-    win.processGuiMap(visglobals.mainmenu, "mainmenu")
+    win.processGuiMap(visglobals.guimaps["mainmenu"], "mainmenu")
     win.runWin()
 
 

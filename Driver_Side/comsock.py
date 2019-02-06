@@ -1,10 +1,11 @@
-#comsock.py: Manages the two-way communications socket between the pi and computer because NetworkTables malfunctioned
+#comsock.py: Daemon for the two-way communications socket between the pi and computer because NetworkTables malfunctioned
 #1/26/2019 HP
 
 #Module Imports
 import socket
 import sys
 import time
+import queue
 
 #Local Imports
 import logs
@@ -40,14 +41,18 @@ def sendString(comsock, string, adr = piadr):
     comsock.sendto(b"", adr)
     logs.log("Message '{}' would have overflowed buffer of size {}. Sending aborted.".format(bytestring.decode(), settings["buffersize"]))
 
-def recvString(comsock):
+def recvString(comsock, timeout = 0):
   print("recieving string")
   try:
+    if timeout:
+      comsock.settimeout(timeout)
     bytestring = comsock.recv(settings["buffersize"])
     string = bytestring.decode()
     return string
   except socket.error as e:
     logs.log("The following socket error was passed over - {}".format(e))
+  finally:
+    comsock.setblocking(True)
 
 def configure(comsock, setting, value, timeout = .5):
   message = "changed {}: {}".format(setting, value).encode()
@@ -90,49 +95,64 @@ def changeSetting(setting, value):
   else:
     settings[setting] = value
 
+def getQueue(q):
+  """
+  Gets one item from the queue without timeout
+  """
+  try:
+    item = q.get_nowait()
+  except queue.Empty as e:
+    logs.log("The following socket error was passed over - {}".format(e))
+    item = None
+  return item
+
 def mainloop(timeout):
   print(myadr)
+  q = queue.Queue()
   messages = {}
-  comsock = makeComSock()
+  ##comsock has been replaced by queue
+  #comsock = makeComSock()
   #sendMsgLength(comsock)
   starttime = time.perf_counter()
   while starttime - time.perf_counter() < timeout:
-    string = recvString(comsock)
+    #The message from the queue
+    string = getQueue(q)
+    ##Depreciated socket used for daemon communication
+    #string = recvString(comsock)
     splitstring = string.split()
-    if not string:
-      continue
-    #If the string is a request for a value from the internal server
-    if len(splitstring) == 1:
-      #Get command is implied if no other arguments
-      if string in messages:
-        comsock.sendto(messages[string].encode(), internadr)
-      else:
-        comsock.sendto(b"", internadr)
-    elif splitstring[0] == "get":
-      #If given an explicit 'get' command
-      if splitstring[1] in messages:
-        comsock.sendto(messages[splitstring[1]].encode(), internadr)
-      else:
-        comsock.sendto(b"", internadr)
-    elif splitstring[0] == "put":
-      #If the string is a key pair assignment from the internal system which needs to be echoed to the desktop
-      key, value = getValuePair(splitstring[1:])
-      sendValuePair(comsock, key, value)
-      messages[key] = value
-    elif ":" in splitstring[0]:
-      #If string is a key-value assignment pair
-      key, value = getValuePair(splitstring)
-      messages[key] = value
-    elif splitstring[0] == "set":
-      #Assume the only thing to be set is the message length
-      setting = splitstring[1]
-      value = splitstring[2]
-      if configure(comsock, setting, value):
+    if string:
+      #If the queue message is a request for a value from the internal server
+      if len(splitstring) == 1:
+        #Get command is implied if no other arguments
+        if queue in messages:
+          comsock.sendto(messages[queue].encode(), internadr)
+        else:
+          comsock.sendto(b"", internadr)
+      elif splitstring[0] == "get":
+        #If given an explicit 'get' command
+        if splitstring[1] in messages:
+          comsock.sendto(messages[splitstring[1]].encode(), internadr)
+        else:
+          comsock.sendto(b"", internadr)
+      elif splitstring[0] == "put":
+        #If the string is a key pair assignment from the internal system which needs to be echoed to the desktop
+        key, value = getValuePair(splitstring[1:])
+        sendValuePair(comsock, key, value)
+        messages[key] = value
+      elif ":" in splitstring[0]:
+        #If string is a key-value assignment pair
+        key, value = getValuePair(splitstring)
+        messages[key] = value
+      elif splitstring[0] == "set":
+        #Assume the only thing to be set is the message length
+        setting = splitstring[1]
+        value = splitstring[2]
+        if configure(comsock, setting, value):
+          changeSetting(setting, value)
+      elif splitstring[0] == "changed":
+        comsock.sendto(string.encode(), piadr)
+        setting = splitstring[1]
+        value = splitstring[2]
         changeSetting(setting, value)
-    elif splitstring[0] == "changed":
-      comsock.sendto(string.encode(), piadr)
-      setting = splitstring[1]
-      value = splitstring[2]
-      changeSetting(setting, value)
   comsock.shutdown()
   comsock.close()

@@ -13,4 +13,5 @@ class SocketThread(threading.Thread):
     self.timeout = timeout
 
   def run(self):
+    self.daemon = True
     comsock.mainloop(self.timeout)

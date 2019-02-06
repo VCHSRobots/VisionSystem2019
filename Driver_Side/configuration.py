@@ -34,7 +34,7 @@ def configureMatchInterfaces(self):
     global configwascalled
     cams = commands.getActiveCams(9)
     for camnum in cams:
-        self.addCamera(widget = cams[camnum], interface="match") #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
+        self.addCamera(camnum = camnum, interface="match") #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
     shareMatchCameras(self) #Copies the camera objects to other interfaces so they can be gridded
     configureOneCamMatch(self)
     configureMultiViewMatch(self)
@@ -80,9 +80,12 @@ def shareMatchCameras(self):
     for inter in matchinters:
         if not inter in self.cameras:
             self.cameras[inter] = []
-    for camera in self.cameras["match"]:
-        for inter in matchinters:
-            self.cameras[inter].append(camera)
+    try:
+        for camera in self.cameras["match"]:
+            for inter in matchinters:
+                self.cameras[inter].append(camera)
+    except KeyError:
+        raise KeyError("'match' key does not exist. Were any cameras connected on the pi side?")
 
 def startMultiviewMatch(self):
     menus.matchMenu(self)
