@@ -25,10 +25,10 @@ internadr = (ip, 5810)
 #Global communications socket
 comsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #List of valid widget types
-widgettypes = ["camera", "localcamera", "button", "entry", "checkbox", "listbox", "radiobutton", "combobox", "textbox" "scale"]
+widgettypes = ["camera", "localcamera", "button", "entry", "checkbox", "listbox", "radiobutton", "combobox", "text", "scale"]
 
 #Menu Guis
-mapnames = ["mainmenu", "settings", "onecammatch", "multiview"]
+mapnames = ["mainmenu", "settings", "onecammatch", "multiview", "test"]
 guimaps = {mapname: openGuiFile(mapname) for mapname in mapnames}
 
 #NetworkTables

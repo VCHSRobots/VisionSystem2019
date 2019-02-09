@@ -2,19 +2,20 @@
 #1/21/2019 HP
 
 import time
+import json
 
 import visglobals
+import configuration as config
 from visglobals import comsock, piadr, visiontable
+
+camnames = {0: "Front", 1: "Rear", 2: "Left", 3: "Right"}
 
 #Globally used commands
 def startMatch(self):
     """
-    Starts Vision System for a competition match
+    Sends the Vision System start siginal for a competition match
     """
-    #This commmand is called from multiple sources, not just by menus
-    #Creates a socket for two-way communication with the pi
     sendStartSignal(comsock)
-    matchLoop(self)
     comsock.close()
 
 def swapOutCam(self, replacedcam, newcam):
@@ -27,21 +28,21 @@ def swapOutCam(self, replacedcam, newcam):
 def sendStartSignal(sock):
     sock.sendto(b"i", piadr)
 
-def matchLoop(self): #, timeout=180):
+def matchLoop(self, lastmatchcams, interface = "match"):
+    """
+    Updates all cameras and checks if any failed cameras reconnected
+    """
+    updateCams(self, interface=interface)
+    if lastmatchcams != self.cameras[interface]:
+        config.shareMatchCameras(self)
+
+def updateCams(self, interface="match"):
     """
     Updates all cameras on an interface
     """
-    #starttime = time.perf_counter()
-    #while time.perf_counter()-starttime < 180:
-    #if self.active:
-    activecams = getActiveCams(len(self.cameras["match"]))
+    activecams = getActiveCams(len(self.cameras[interface]))
     for activeind in activecams:
-        self.cameras["match"][activeind].updateImgOnLabel()
-
-def updateCams(self):
-    activecams = getActiveCams(len(self.cameras["match"]))
-    for activeind in activecams:
-        camera = self.cameras["match"][activeind]
+        camera = self.cameras[interface][activeind]
         if camera in self.gridded:
             camera.updateImgOnLabel()
 
@@ -54,106 +55,119 @@ def turnOffUngridedCams(self):
             if not camera.location:
                 camera.active = False
                 camera.updateCamOverNetwork()
+#Setup Commands
+entries = ["interface", "mainframes", "sideframes", "mainwidth", "mainheight", "sidewidth", "sideheight", "mainjpegquality", "sidejpegquality"]
+interfaces = {"Four Camera View": "fourcam", "Two Camera View (Swapable)": "twocam", "One Camera View (Swapable": "onecam"}
+
+def saveSetup(self):
+    filename = "{}.setup".format(self.entries[0].getValue())
+    setup = {}
+    for ind, entry in enumerate(entries):
+        setup[entry] = interfaces[self.entries[ind].getValue()]
+    f = open(filename, "w")
+    json.dump(setup, filename)
 
 #Multiview Commands
 mains = [0, 1]
 sides = [2, 3]
 
-def setupMultiview(self):
-    stageAllCams(self)
-    self.vars["isactive"] = True
-    self.vars["color"] = True
-    self.vars["quality"] = 4
-    self.vars["fps"] = 4
-
 def putToDash(self, textbox, value):
     if textbox == "staged":
-        value = convertCamIndsToNames(value)
         staged = ""
         #Lists staged cameras in a gramatically correct manner
-        for ind, camname in enumerate(value):
-            if ind < camname-1:
-                staged += camname + ", "
-            elif ind != 0:
-                staged += "and " + camname
+        for ind, val in enumerate(value):
+            print(ind, len(value))
+            if ind == 0:
+                if len(value) > 2:
+                    staged += camnames[val] + ", "
+                elif len(value) == 1:
+                    staged += camnames[val]
+                else:
+                    staged += camnames[val] + " "
+            elif ind == len(value)-1:
+                print("Here")
+                staged += "and " + camnames[val]
             else:
-                staged = camname
-        text = "The {} cameras are staged".format(staged)
-        self.textboxes["multiview"][0] = text
+                staged += camnames[val] + ", "
+        if len(self.vars["isstaged"]) > 1:
+            text = "The {} cameras are staged".format(staged)
+        else:
+            text = "The {} camera is staged".format(staged)
+        print(text)
+        print(self.textboxes)
+        self.textboxes["multiview"][0].setValue(text)
     elif textbox == "active":
         if value == True:
             active = "active"
         elif value == False:
             active = "not active"
-        if len(self.vars["isstaged"]) > 1:
+        plural = len(self.vars["isstaged"]) > 1
+        if plural:
             text = "The staged cameras are {}".format(active)
         else:
             text = "The staged camera is {}".format(active)
-        self.textboxes["multiview"][1] = text
+        self.textboxes["multiview"][1].setValue(text)
         if value:
-            self.buttons["multiview"].text = "Deactivate Cameras"
+            if plural:
+                self.buttons["multiview"][7].setText("Deactivate Cameras")
+            else:
+                self.buttons["multiview"][7].setText("Deactivate Camera")
         else:
-            self.buttons["multiview"].text = "Activate Cameras"
+            if plural:
+                self.buttons["multiview"][7].setText("Activate Cameras")
+            else:
+                self.buttons["multiview"][7].setText("Activate Camera")
     elif textbox == "quality":
         #Finds whether main, side, or both hierarchies of camera are staged
         stagedhierarchies = stagedCamHierarchies(self)
         resolutions = ""
-        if stagedhierarchies[0] and (not stagedhierarchies[1]):
-            resolutions += "({}x{} for main cameras)".format(int(480*(value/7)), int(640*(value/7)))
+        print(stagedhierarchies)
+        if stagedhierarchies[0] and stagedhierarchies[1]:
+            resolutions += "\n({}x{} for main cameras and {}x{} for side cameras)".format(int(480*(value/7)), int(640*(value/7)), int(480*(value/14)), int(640*(value/14)))
+        elif stagedhierarchies[0] and (not stagedhierarchies[1]):
+            resolutions += "\n({}x{} for main cameras)".format(int(480*(value/7)), int(640*(value/7)))
         elif (not stagedhierarchies[0]) and stagedhierarchies[1]:
-            resolutions += "({}x{} for side cameras)".format(int(480*(value/14)), int(640*(value/14)))
-        elif stagedhierarchies[0] and stagedhierarchies[1]:
-            resolutions += "({}x{} for main cameras and {}x{} for side cameras)".format(int(480*(value/7)), int(640*(value/7)), int(480*(value/14)), int(640*(value/14)))
+            resolutions += "\n({}x{} for side cameras)".format(int(480*(value/14)), int(640*(value/14)))
         else:
             raise ValueError("Staged camera index is empty")
         text = "The current quality preset is {} {}".format(value, resolutions)
-        self.textboxes["multiview"][2] = text
+        self.textboxes["multiview"][2].setValue(text)
     elif textbox == "color":
         if value:
             color = "RGB"
+            self.buttons["multiview"][12].setText("Black & White")
         else:
             color = "B&W"
+            self.buttons["multiview"][12].setText("Color")
         text = "Color: {}".format(color)
-        self.textboxes["multiview"][3] = text
+        self.textboxes["multiview"][3].setValue(text)
     elif textbox == "framerate":
         stagedhierarchies = stagedCamHierarchies(self)
         framerates = ""
         if stagedhierarchies[0] and (not stagedhierarchies[1]):
-            framerates += "({}fps for main cameras)".format(int(30*(value/7)))
+            framerates += "\n({}fps for main cameras)".format(int(30*(value/7)))
         elif (not stagedhierarchies[0]) and stagedhierarchies[1]:
-            framerates += "({}fps for side cameras)".format(int(30*(value/7)))
+            framerates += "\n({}fps for side cameras)".format(int(30*(value/7)))
         elif stagedhierarchies[0] and stagedhierarchies[1]:
-            framerates += "({}fps for main cameras and {}fps for side cameras)".format(int(30*(value/7)), int(20*(value/7)))
+            framerates += "\n({}fps for main cameras and {}fps for side cameras)".format(int(30*(value/7)), int(20*(value/7)))
         else:
             raise ValueError("Staged camera index is empty")
         text = "The current framerate preset is {} {}".format(value, framerates)
-        self.textboxes["multiview"][3] = text
+        self.textboxes["multiview"][4].setValue(text)
     elif textbox == "diagnostic":
-        self.textboxes["multiview"][4] = value
+        self.textboxes["multiview"][5].setValue(text)
 
 def setRemainingTime(self, time):
     text = "Match Currently running \n{} seconds remaning".format(time)
     putToDash(self, "diagnostic", text)
-
-def convertCamIndsToNames(value):
-    indnames = {0: "Front", 1: "Rear", 2: "Left", 3: "Right"}
-    names = []
-    if type(value) == list:
-        for camnum in value:
-            names.append(indnames[camnum])
-    elif type(value) == int or type(value) == float:
-        names = [value]
-    else:
-        raise TypeError("Invalid type passed: {}".format(str(type(value))))
-    return names
 
 def stagedCamHierarchies(self):
     staged = self.vars["isstaged"]
     stagedhierarchies = [False, False]
     if (0 in staged) or (1 in staged):
         stagedhierarchies[0] = True
-    elif (2 in staged) or (3 in staged):
-        stagedhierarchies[0] = True
+    if (2 in staged) or (3 in staged):
+        stagedhierarchies[1] = True
     return stagedhierarchies
 
 def stageFrontCam(self):
@@ -242,8 +256,8 @@ def deactivate(camera):
 
 def increaseFramerate(self):
     #Checks if framerate preset is at or above maximum
-    if self.vars["framerate"] <= 7:
-        pass
+    if self.vars["framerate"] >= 7:
+        return
     self.vars["framerate"] += 1
     updateToFramerate(self)
     putToDash(self, "framerate", self.vars["framerate"])
@@ -251,7 +265,7 @@ def increaseFramerate(self):
 def decreaseFramerate(self):
     #Checks if framerate preset is at or below minimum
     if self.vars["framerate"] <= 1:
-        pass
+        return
     self.vars["framerate"] -= 1
     updateToFramerate(self)
     putToDash(self, "framerate", self.vars["framerate"])
@@ -293,14 +307,14 @@ def updateCamToFramerate(camera, preset, main = True):
 
 def increaseQuality(self):
     if self.vars["quality"] >= 7:
-        pass
+        return
     self.vars["quality"] += 1
     updateToQuality(self)
     putToDash(self, "quality", self.vars["quality"])
 
 def decreaseQuality(self):
     if self.vars["quality"] <= 1:
-        pass
+        return
     self.vars["quality"] -= 1
     updateToQuality(self)
     putToDash(self, "quality", self.vars["quality"])
@@ -335,7 +349,8 @@ def updateCamToQuality(camera, preset, main = True):
         quality = (int(480*(preset/7)), int(640*(preset/7)))
     else:
         quality = (int(480*(preset/14)), int(640*(preset/14)))
-    camera.framerate = quality
+    camera.width = quality[1]
+    camera.height = quality[0]
     camera.updateOverNetwork()
 
 def toggleColor(self):
@@ -431,6 +446,9 @@ def getActiveCams(numrange = 0, *args):
             if isactive:
                 actives.append(num)
     return actives
+
+def isCamActive(camnum):
+    return visiontable.getBoolean("{0}isactive".format(camnum), False)
 
 def getColorCams(numrange = 0, *args):
     """

@@ -4,13 +4,15 @@
 #Module Imports
 import threading
 import networktables
+import json
 import re #Used for string processing
 import functools as fts
 import tkinter as tk
 
 #Local Imports
 import labels
-from visglobals import myadr, piadr, widgettypes, visiontable
+import configuration as config
+from visglobals import myadr, piadr, widgettypes, visiontable, guimaps
 
 #Globals
 #Ip is configured to Holiday's laptop... change if neccecary!
@@ -50,23 +52,20 @@ class TkWin:
     #Menus are structured as {Menu: Command, PulldownMenu: {MenuLabel1: Command1, MenuLabel2, Command2}}
     self.menus = menustructure
     self.initMenuSystem()
+    self.interface = "mainmenu"
 
   def runWin(self):
     """
     Initiates the tkinter window while running the instance's set thread function
     """
-    thread = threading.Thread(target=self.threadLoop)
-    thread.start()
+    self.thread.run(self)
     self.root.mainloop()
 
-  def setThreadLoop(self, func):
+  def setThread(self, func):
     """
     Sets the function to be run when self.runWin is called
     """
-    self.threadloop = func
-
-  def threadLoop(self):
-    self.threadloop(self)
+    self.thread = func
 
   def initMenuSystem(self):
     self.root.option_add("*tearOff", False) #Not sure how to implement this
@@ -74,15 +73,17 @@ class TkWin:
     processMenuHierarchy(self.toplevel, self.menus, self)
     self.root.config(menu=self.toplevel)
 
-  def addCamera(self, camnum, interface="mainmenu", widget = None):
+  def addCamera(self, camnum, interface="mainmenu"):
     """
     Tries to add a remote camera to the window; returns False if it fails
     """
-    if widget:
-      self.cameras[interface].append(widget)
     if interface not in self.cameras:
       self.cameras[interface] = []
-    self.cameras[interface].append(labels.Camera(camnum, self.root))
+    if visiontable.getBoolean("{}isactive".format(camnum), False):
+      self.cameras[interface].append(labels.Camera(camnum, self.root))
+    else:
+      ind = len(self.cameras[interface]) #The index the placeholder camera will go in for
+      self.cameras[interface].append(labels.FailedCamera(camnum, self.root, self, interface, ind))
     print(self.cameras)
 
   def setCamColor(self, camind, color):
@@ -238,6 +239,8 @@ class TkWin:
     {1: "camera1", 2: "radio0_1}]
     would place the first camera the window recognizes on column 2 row 1 with a columnspan of 3 and rowspan of 3
     """
+    print(self.cameras)
+    print(guiname)
     widgetspans = findWidgetSpans(guimap)
     for num in guimap[1]:
       #Wait to cast num to integer since it needs to match with the dictionary key to access the widget name
@@ -258,7 +261,6 @@ class TkWin:
     """
     Retrieves a widget based on its gui reference name and parent interface
     """
-    print(widgetname)
     widgettype, num, option = splitWidgetName(widgetname)
     #Finds widget based on its type
     if isValidWidget(widgettype):
@@ -280,7 +282,7 @@ class TkWin:
           widget = self.radiobuttons[guiname][num]
         elif widgettype == "combobox":
           widget = self.comboboxes[guiname][num]
-        elif widgettype == "textbox":
+        elif widgettype == "text":
           widget = self.textboxes[guiname][num]
         elif widgettype == "scale":
           widget = self.scales[guiname][num]
@@ -296,10 +298,35 @@ class TkWin:
     for num in range(camrange):
       self.addCamera(num)
 
+  def switchUi(self, guiname):
+    """
+    Configures the window for the given the guifile to be setup and any stray widgets to clear
+    """
+    self.tearDown()
+    #Configures window for the new gui
+    if not config.configwascalled[guiname]:
+        config.configfunctions[guiname](self)
+    #Grids gui widgets
+    print(guiname)
+    self.processGuiMap(guimaps[guiname], guiname)
+    self.interface = guiname
+
+  def loadSetupFile(self, file):
+    #TODO
+    f = open("Guis/{}.setup".format(file))
+    setup = json.load(file)
+    self.setWindowVars(setup)
+    self.switchUi(setup["interface"])
+
+  def setWindowVars(self, setup):
+    interface = setup.pop("interface")
+    self.vars[interface] = setup
+
   def tearDown(self):
     """
     Clears the window of all the widgets grided by lastgui
     """
+    print(self.gridded)
     for widget in self.gridded:
       if len(widget) > 1:
         widget[0].ungrid(widget[1])
@@ -320,6 +347,7 @@ def null(self):
   pass
   
 def splitWidgetName(widgetname):
+  print(widgetname)
   #Seperates widget's end tag from its type indicator
   widgettag = re.sub(r"[a-zA-Z]", "", widgetname)
   widgettype = re.sub(r"[0-9_]", "", widgetname)
@@ -336,6 +364,7 @@ def splitWidgetName(widgetname):
   return widgettype, num, option
   
 def isValidWidget(widgettype):
+  print(widgettypes)
   if widgettype in widgettypes:
     return True
   else:
@@ -347,26 +376,18 @@ def findWidgetSpans(guimap):
   """
   widgetspans = {} #{num: (firstcolumn, lastcolumn, firstrow, lastrow)}
   firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
-  numencountered = False
+  rowswithnum = []
   for num in guimap[1]:
     num = int(num)
     for ind, row in enumerate(guimap[0]):
       if num in row:
-        if not numencountered:
-          #Some numbers have 1 added to them because there may be problems with index 0
-          firstrow = ind
-          firstcolumn = row.index(num)
-          lastcolumn = len(row)-row[::-1].index(num)-1
-          numencountered = True
-        elif numencountered:
-          lastrow = ind
-          break
-      if (ind == len(guimap[0])-1) and (not lastrow):
-        #If on the last row of the map without encountering the number again
-        lastrow = firstrow
+        rowswithnum.append(ind)
+        firstcolumn = row.index(num)
+        lastcolumn = len(row)-row[::-1].index(num)-1
+    firstrow, lastrow = min(rowswithnum), max(rowswithnum)
     widgetspans[num] = (firstcolumn, lastcolumn, firstrow, lastrow)
-    numencountered = False
     firstcolumn, lastcolumn, firstrow, lastrow = None, None, None, None
+    rowswithnum = []
   return widgetspans
     
 def checkForPartial(func, partial, self=None):

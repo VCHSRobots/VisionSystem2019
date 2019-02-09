@@ -10,6 +10,7 @@ from networktables import NetworkTables as nt
 
 import menus
 import configuration
+import threads
 import visglobals
 from visglobals import ip, piip, null, myadr, comsock, visiontable
 
@@ -31,7 +32,7 @@ def testSystem():
     camnums = getActiveCams(10)
     for camnum in camnums:
         win.addCamera(camnum)
-    win.setThreadLoop(testLoop)
+    win.setThread(testLoop)
     guifile = open("test.gui")
     print(win.cameras)
     guimap = json.load(guifile)
@@ -42,12 +43,6 @@ def testSystem():
     finally:
         win.emergencyShutdown()
 
-def systemThread(self):
-    """
-    Thread fucntion to be called by the tkinter class
-    """
-    pass
-
 def startSystem():
     """
     Initiates the vision system application for the 2019 First Robotics Competition
@@ -55,12 +50,19 @@ def startSystem():
     menustructure = {"Test": {"Do Nothing": null, "Switch Menus_*self*": menus.matchMenu}}
     win = tkwin.TkWin("Vision System", menustructure=menustructure)
     #Sets the function to be called when window is initated
-    win.setThreadLoop(systemThread)
+    systemthread = makeSystemThread()
+    win.setThread(systemthread)
     #Sets up the main menu
     configuration.configureMainMenu(win)
     win.processGuiMap(visglobals.guimaps["mainmenu"], "mainmenu")
     win.runWin()
 
+def makeSystemThread():
+    """
+    Thread fucntion to be called by the tkinter class
+    """
+    thread = threads.SystemThread()
+    return thread
 
 def getActiveCams(numrange):
     """
@@ -92,6 +94,9 @@ def testGrid():
     guimap = json.load(guifile)
     guifile.close()
     win.processGuiMap(guimap, "mainmenu")
-    win.setThreadLoop(alphaLoop)
-    print(win.threadloop)
+    win.setThread(alphaLoop)
+    print(win.thread)
     win.runWin()
+
+if __name__ == "__main__":
+    startSystem()
