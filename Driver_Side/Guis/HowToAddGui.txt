@@ -1,0 +1,10 @@
+HowToAddGui.txt: Instructions how to configure a gui file with vision system
+HP 2/7/2019
+
+
+1. Create configuration function and set gui's configwascalled key to True at end of function
+2. Create gui menu function in menus.py
+3. Add gui's configuration function to configuration.configfunctions (below the functions themselves)
+4a. Add "{guiname}": False to configuration.configwascalled
+4b. Add gui's name to visglobals.mapnames
+4c. Add gui's menu function to menus.matchfunctions

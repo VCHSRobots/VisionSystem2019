@@ -7,19 +7,18 @@ import time
 
 import tkwin as win
 import commands
-import configuration as config
 import menus
 import visglobals
 from visglobals import guimaps, visiontable
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
-configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False}
+configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False}
 
 #Interface Configuration Functions
 def configureMainMenu(self):
     global configwascalled
-    self.addButton(text = "Start Match!", command = startMultiviewMatch, partialarg = win.SELF, interface = "mainmenu")
+    self.addButton(text = "Start Match!", command = self.switchUi, partialarg = "multiview", interface = "mainmenu")
     self.addButton(text = "Exit", command = self.root.quit, interface = "mainmenu")
     configwascalled["mainmenu"] = True
 
@@ -27,18 +26,11 @@ def configureSettingsMenu(self):
     global configwascalled
     configwascalled["settings"] = True
 
-def configureMatchInterfaces(self):
-    """
-    Configures all match interfaces
-    """
+def configureTest(self):
     global configwascalled
-    cams = commands.getActiveCams(9)
-    for camnum in cams:
-        self.addCamera(camnum = camnum, interface="match") #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
-    shareMatchCameras(self) #Copies the camera objects to other interfaces so they can be gridded
-    configureOneCamMatch(self)
-    configureMultiViewMatch(self)
-    configwascalled["match"] = True
+    neededcams = [0, 1, 2, 3]
+    addCams(self, neededcams=neededcams, interface="test")
+    configwascalled["test"] = True
 
 def configureOneCamMatch(self):
     #Configuration only to be called by configureMatchInterfaces
@@ -47,8 +39,12 @@ def configureOneCamMatch(self):
     self.addEntry(interface = "onecammatch")
     configwascalled["onecammatch"] = True
 
-def configureMultiViewMatch(self):
+def configureMultiview(self):
     global configwascalled
+    # Adds cameras to a 'match' interface then copies them to the proper interface
+    # so their duplicate Camera widgets don't try to reinitialize identical sockets
+    configureMatchCameras(self)
+    copyMatchCameras(self, interface="multiview")
     self.addButton("Select Front", commands.stageFrontCam, interface = "multiview")
     self.addButton("Select Back", commands.stageBackCam, interface = "multiview")
     self.addButton("Select Left", commands.stageLeftCam, interface = "multiview")
@@ -56,38 +52,72 @@ def configureMultiViewMatch(self):
     self.addButton("Select All", commands.stageAllCams, interface = "multiview")
     self.addButton("Select Mains", commands.stageMainCams, interface = "multiview")
     self.addButton("Select Sides", commands.stageSubCams, interface = "multiview")
-    self.addButton("Deactivate", commands.toggleActivity, interface = "multiview")
+    self.addButton("Deactivate Cameras", commands.toggleActivity, interface = "multiview")
     self.addButton("Framerate Up", commands.increaseFramerate, interface = "multiview")
     self.addButton("Framerate Down", commands.decreaseFramerate, interface = "multiview")
     self.addButton("Increase Quality", commands.increaseQuality, interface = "multiview")
     self.addButton("Decrease Quality", commands.decreaseQuality, interface = "multiview")
     self.addButton("Black & White", commands.toggleColor, interface = "multiview")
     self.addText("All Cameras Staged", interface = "multiview")
-    self.addText("All Cameras Active", interface = "multiview")
-    self.addText("Quality Level: Default", interface = "multiview")
+    self.addText("The staged cameras are active", interface = "multiview")
+    self.addText("Quality: 4\n(274x365 for main cameras and 137x182 for side cameras)", interface = "multiview")
     self.addText("Color Mode: RGB", interface = "multiview")
-    self.addText("15 FPS", interface = "multiview")
+    self.addText("Framerate: 4\n(17 for main cameras and 11 for side cameras)", interface = "multiview")
+    self.addText("Debug Console", interface = "multiview")
     self.addText("Adjust Framerate", interface = "multiview")
     self.addText("Adjust Quality", interface = "multiview")
     self.addText("EPIC ROBOTZ Vision System: Crowded Interface Edition!", interface = "multiview")
+    self.vars["staged"] = self.cameras["multiview"]
+    self.vars["isstaged"] = [0, 1, 2, 3]
+    self.vars["isactive"] = True
+    self.vars["color"] = True
+    self.vars["quality"] = 4
+    self.vars["framerate"] = 4
     configwascalled["multiview"] = True
 
-configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, "match": configureMatchInterfaces}
+def configureMatchCameras(self, neededcams = (0, 1, 2, 3)):
+    """
+    Configures all match interfaces
+    """
+    global configwascalled
+    addCams(self, neededcams=neededcams, interface="match") #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
+
+def copyMatchCameras(self, interface):
+    self.cameras[interface] = []
+    for camera in self.cameras["match"]:
+        self.cameras[interface].append(camera)
+
+def configureFromSetup(self):
+    #TODO!!!!
+    pass
+
+def configureFourCam(self):
+    pass
+
+def configureTwoCam(self):
+    pass
+
+def configureOneCam(self):
+    pass
+
+configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, "multiview": configureMultiview, "test": configureTest, "fourcam": configureFourCam, "twocam": configureTwoCam, "onecam": configureOneCam}
 
 #Supplementary Configuration Functions
 def shareMatchCameras(self):
     matchinters = ["onecammatch", "multiview"]
-    for inter in matchinters:
-        if not inter in self.cameras:
-            self.cameras[inter] = []
     try:
-        for camera in self.cameras["match"]:
-            for inter in matchinters:
-                self.cameras[inter].append(camera)
+        for inter in matchinters:
+            self.cameras[inter] = self.cameras["match"]
     except KeyError:
-        raise KeyError("'match' key does not exist. Were any cameras connected on the pi side?")
+        print("'match' key does not exist. Were any cameras connected on the pi side?")
 
-def startMultiviewMatch(self):
-    menus.matchMenu(self)
+def addAvalibleCameras(self, interface, maxind = 9):
+    cams = commands.getActiveCams(maxind)
+    for camnum in cams:
+        self.addCam(camnum=camnum, interface=interface)
 
+def addCams(self, neededcams, interface):
+    #cams = [commands.isCamActive(cam) for cam in neededcams]
+    for camnum in neededcams:
+        self.addCamera(camnum=camnum, interface=interface)
 

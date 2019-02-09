@@ -4,11 +4,6 @@ mainmenu:
     1: Start Button
     2: Exit Button
 
-onecammatch:
-    1: Switchable Camera
-    2: Swap Button
-    3: Entry field: indicates camera to swap to
-
 multiview:
     1: Front Camera
     2: Back Camera
@@ -21,3 +16,21 @@ multiview:
     17: Color On/Off
     18-23: Status Indicators (23 is reserved for diagnostics)
     24-26: Instruction Labels
+
+setup:
+    1: Setup file name entry field
+    2: Type of Camera View:
+        Four Camera View
+        Swapable Two Camera View
+        Swapable One Camera View
+    3: Main Camera Framerates
+    4: Side Camera Framerates
+    5: Main Camera Width
+    6: Main Camera Height
+    7: Side Camera Width
+    8: Side Camera Height
+    9: Main Camera JPEG Quality
+    10: Side Camera JPEG Quality
+    11-21: Respective field Labels
+    22: Save Button
+    23: Save Status Output

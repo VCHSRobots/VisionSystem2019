@@ -16,6 +16,7 @@ from PIL import ImageTk
 
 #Local Imports
 import sockettables
+import fonts
 from visglobals import ip, visiontable
 
 def null(self):
@@ -81,6 +82,8 @@ class Camera(Widget):
         """
         #Places an image from the networked camera on the label
         image = self.getImgFromNetwork()
+        if not image:
+            return
         self.widget.config(image=image)
         self.widget.image = image
     
@@ -101,10 +104,20 @@ class Camera(Widget):
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
-        img = self.sock.recv(500000)
+        #TODO Make socket timeout if it takes too long
+        img = self.recvWithTimeout()
+        if img == b"":
+            return False
         img = self.processIncomingImg(img)
         return img
     
+    def recvWithTimeout(self):
+        try:
+            message = self.sock.recv(self.maxsize)
+        except socket.error:
+            message = b""
+        return message
+
     def processIncomingImg(self, img):
         """
         Converts a bytes jpeg image to the TKInter usable format
@@ -123,7 +136,78 @@ class Camera(Widget):
         return img
 
     def shutdown(self):
-        self.sock.close()
+        pass
+
+    @property
+    def timeout(self):
+        self.sock.settimeout(self.timeout)
+        return self.timeout
+
+    @timeout.setter
+    def timeout(self, timeout):
+        if timeout < 0:
+            timeout = None
+        self.sock.settimeout(timeout)
+        self.__timeout = timeout
+
+
+class FailedCamera(Widget):
+    #Camera fallback if a number cannot connect
+    def __init__(self, camnum, root, window, interface, ind):
+        #Camnum will match up with camnum on robot network
+        self.root = root
+        self.camnum = camnum
+        message = "Camera at network index {} is currently unavalible.".format(camnum)
+        self.widget = tk.Label(root, text=message, font=fonts.Textbox)
+        self.window = window
+        self.interface = interface
+        self.ind = ind
+
+        #Original Camera class variables except socket
+        self.active = True
+        #TODO: Width and Height are magic numbers: replace them with a good default.
+        self.width = 500
+        self.height = 500
+        self.color = True
+        self.framerate = 10
+        self.quantization = 8
+        self.compression = 6
+        self.quality = 95
+        self.maxsize = 50000
+        
+    def updateImgOnLabel(self):
+        """
+        Placeholder for this method on Camera
+        """
+        self.tryToConnect() #Tries to connect to proper camera
+    
+    def updateOverNetwork(self):
+        """
+        Updates Networktable data about the camera
+        """
+        visiontable.putBoolean("{0}active".format(self.camnum), self.active)
+        visiontable.putNumber("{0}width".format(self.camnum), self.width)
+        visiontable.putNumber("{0}height".format(self.camnum), self.height)
+        visiontable.putBoolean("{0}color".format(self.camnum), self.color)
+        visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
+        #visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
+        visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
+        visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
+
+    def tryToConnect(self):
+        """
+        Tests whether the camera being replaced has become avalible and puts it in place if it has
+        """
+        if visiontable.getBoolean("{}isactive".format(self.camnum)):
+            camera = Camera(self.camnum, self.root)
+            self.window.cameras[self.interface].remove(self.widget)
+            self.window.cameras[self.interface].insert(self.ind, camera)
+            self.window.replaceWidget(self.widget, camera)
+            self.widget.destroy()
+
+
+    def shutdown(self):
+        pass
     
 class LocalCamera(Widget):
     """
@@ -178,17 +262,22 @@ class Entry(Widget):
 class Button(Widget):
     def __init__(self, root, text, command):
         self.root = root
-        self.widget = tk.Button(root, text=text, command=command)
+        self.text = tk.StringVar()
+        self.widget = tk.Button(root, textvariable=self.text, command=command, font=fonts.Button)
+        self.text.set(text)
         self.location = ()
     
-    def changeText(self, text):
-        self.widget["text"] = text
+    def setText(self, text):
+        self.text.set(text)
+
+    def getValue(self):
+        return self.text.get()
 
 class Checkbox(Widget):
     def __init__(self, root, text, command, onval=True, offval=False):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = tk.Checkbutton(root, text=text, command=command, onvalue=onval, offvalue=offval)
+        self.widget = tk.Checkbutton(root, text=text, command=command, onvalue=onval, offvalue=offval, font=fonts.Button)
         self.location = ()
 
 class RadioButton(Widget):
@@ -196,7 +285,7 @@ class RadioButton(Widget):
         self.root = root
         #Buttons are a (displaytext, value) pair
         self.value = tk.StringVar()
-        self.options = [tk.Radiobutton(root, text=text, variable=self.value, value=val) for text, val in buttons]
+        self.options = [tk.Radiobutton(root, text=text, variable=self.value, value=val, font=fonts.Button) for text, val in buttons]
         self.location = {}
 
     def addOption(self, text, value):
@@ -215,7 +304,7 @@ class Combobox:
     def __init__(self, root, values=[], onchange=null):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = ttk.Combobox(root, textvariable=self.value)
+        self.widget = ttk.Combobox(root, textvariable=self.value, font=fonts.Button)
         self.values = values
         self.widget["values"] = tuple(values)
         self.onchange = onchange
@@ -232,7 +321,7 @@ class Listbox:
     def __init__(self, root, height, values, multipleselect=False):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = tk.Listbox(root, height=height)
+        self.widget = tk.Listbox(root, height=height, font=fonts.Button)
         self.values = values
         self.multipleselect = multipleselect
         self.widget["listvariable"] = values
@@ -260,20 +349,21 @@ class Listbox:
         else:
             self.widget["selectmode"] = "browse"
 
-class Text:
+class Text(Widget):
     def __init__(self, root, text):
-        self.widget = tk.Label(root)
-        self.widget.text = text #Not sure if correct
+        self.text = tk.StringVar()
+        self.widget = tk.Label(root, textvariable=self.text, font=fonts.Textbox)
+        self.text.set(text)
         self.location = ()
 
     def setValue(self, text):
         """
         Changes text to parameters
         """
-        self.widget.text = text
+        self.text.set(text)
 
     def getValue(self):
-        return self.widget.text
+        return self.text.get()
 
 class Scale:
     def __init__(self, root, length, orient=tk.VERTICAL, start=None, end=None, command=null, variable=False):
@@ -288,7 +378,7 @@ class Scale:
             start = end-length
         elif start and (not end):
             end = start+length
-        self.widget = ttk.Scale(root, orient=orient, length=length, from_=start, to=end)
+        self.widget = ttk.Scale(root, orient=orient, length=length, from_=start, to=end, font=fonts.Button)
         if command is not null:
             self.configCommand(command)
         if variable:
