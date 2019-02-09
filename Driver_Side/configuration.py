@@ -14,6 +14,7 @@ from visglobals import guimaps, visiontable
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
 configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False}
+commands = {}
 
 #Interface Configuration Functions
 def configureMainMenu(self):
@@ -100,7 +101,23 @@ def configureTwoCam(self):
 def configureOneCam(self):
     pass
 
-configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, "multiview": configureMultiview, "test": configureTest, "fourcam": configureFourCam, "twocam": configureTwoCam, "onecam": configureOneCam}
+def configureConfigurable(self):
+    configureMatchCameras(self)
+    shareMatchCameras(self, "configurable")
+    f = open("Guis/configurable.setup")
+    setup = json.load(f)
+    buttons = commands["button"]
+    textboxes = commands["textboxes"]
+    #TODO: Make stack gridding function to stack an indefinite amount of items on top of each other
+    #TODO: Make font object on widgets
+    for key in buttons:
+      button = buttons[key]
+      self.addButton(button["text"], commands[button["command"]], interface = setup["interface"])
+    for key in textboxes:
+      textbox = textboxes[key]
+      self.addText(textbox["text"], interface = setup["interface"])
+
+configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, "multiview": configureMultiview, "test": configureTest, "fourcam": configureFourCam, "twocam": configureTwoCam, "onecam": configureOneCam, "configurable": configureConfigurable}
 
 #Supplementary Configuration Functions
 def shareMatchCameras(self):
