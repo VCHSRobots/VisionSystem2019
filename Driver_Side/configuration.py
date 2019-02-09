@@ -14,7 +14,7 @@ from visglobals import guimaps, visiontable
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
 configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False}
-commands = {}
+commandfuncs = {}
 
 #Interface Configuration Functions
 def configureMainMenu(self):
@@ -103,16 +103,18 @@ def configureOneCam(self):
 
 def configureConfigurable(self):
     configureMatchCameras(self)
-    shareMatchCameras(self, "configurable")
+    copyMatchCameras(self, "configurable")
     f = open("Guis/configurable.setup")
     setup = json.load(f)
-    buttons = commands["button"]
-    textboxes = commands["textboxes"]
+    buttons = setup["button"]
+    textboxes = setup["textboxes"]
     #TODO: Make stack gridding function to stack an indefinite amount of items on top of each other
     #TODO: Make font object on widgets
     for key in buttons:
       button = buttons[key]
-      self.addButton(button["text"], commands[button["command"]], interface = setup["interface"])
+      if "font" in button:
+        self.addButton(button["text"], commandfuncs[button["command"]], interface = setup["interface"])
+
     for key in textboxes:
       textbox = textboxes[key]
       self.addText(textbox["text"], interface = setup["interface"])
