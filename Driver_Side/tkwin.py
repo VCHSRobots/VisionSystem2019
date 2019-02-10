@@ -70,6 +70,9 @@ class TkWin:
     self.thread = func
 
   def initMenuSystem(self):
+    """
+    Processes menu heirarchy dictionary into menu on the top of the screen
+    """
     self.root.option_add("*tearOff", False) #Not sure how to implement this
     self.toplevel = tk.Menu(self.root)
     processMenuHierarchy(self.toplevel, self.menus, self)
@@ -77,7 +80,8 @@ class TkWin:
 
   def addCamera(self, camnum, interface="mainmenu", rewidget=False):
     """
-    Tries to add a remote camera to the window; returns False if it fails
+    Adds a listener for a remote camera at a specified camnum socket
+    Tries to reconnect with the FailedCamera widget if it cannot connect at first
     """
     if interface not in self.cameras:
       self.cameras[interface] = []
@@ -90,12 +94,6 @@ class TkWin:
     print(self.cameras)
     if rewidget:
       return camera
-
-  def setCamColor(self, camind, color):
-    """
-    Sets the color of the camera's socket output
-    """
-    self.localcameras[camind].color = color
 
   #Depreciated
   def addLocalCam(self, camnum, interface="mainmenu", rewidget=False):
@@ -111,17 +109,9 @@ class TkWin:
     else:
       return False
 
-  def setLocalCamColor(self, camind, color):
-    """
-    Local variant of setCamColor
-    """
-    self.cameras[camind].color = color
-
-  #Widget functions
-  #Class sends self variable to all commands executed by default: this can be disabled by setting the sendself argument to False
   def addEntry(self, interface="mainmenu", font=None, rewidget=False):
     """
-    Adds a button to the given interface
+    Adds a user entry to the given interface
     """
     if interface not in self.entries:
       self.entries[interface] = []
@@ -132,7 +122,6 @@ class TkWin:
     self.entries[interface].append(entry)
     if rewidget:
       return entry
-
 
   def addButton(self, text, command = null, partialarg = SELF, interface="mainmenu", font=None, convertpartialarg = True, rewidget=False):
     """
@@ -151,7 +140,7 @@ class TkWin:
 
   def addCheckbox(self, text, onval=True, offval=False, interface="mainmenu", font=None, rewidget=False):
     """
-    Adds a user entry field to the given interface
+    Adds a checkbox to the given interface
     """
     if interface not in self.checkboxes:
       self.checkboxes[interface] = []
@@ -165,7 +154,7 @@ class TkWin:
 
   def addRadioButton(self, buttons, interface="mainmenu", font=None, rewidget = False):
     """
-    Adds a user entry field to the given interface
+    Adds a set of mutually exclusive radio button selections to the given interface
     """
     if interface not in self.radiobuttons:
       self.radiobuttons[interface] = []
@@ -179,7 +168,7 @@ class TkWin:
 
   def addCombobox(self, values=[], onchange=labels.null, partialarg = "*self*", interface="mainmenu", font=None, convertpartialarg=True, rewidget=False):
     """
-    Adds a user entry field to the given interface
+    Adds a user entry field with default values to the given interface
     """
     if interface not in self.comboboxes:
       self.comboboxes[interface] = []
@@ -195,7 +184,7 @@ class TkWin:
 
   def addListbox(self, height, values, multipleselect=False, interface="mainmenu", font=None, rewidget=False):
     """
-    Adds a user entry field to the given interface
+    Adds a field with only default values to the given interface
     """
     if interface not in self.listboxes:
       self.listboxes[interface] = []
@@ -209,7 +198,7 @@ class TkWin:
 
   def addText(self, text, interface="mainmenu", font=None, rewidget=False):
     """
-    Adds a user entry field to the given interface
+    Adds a text box to the given interface
     """
     if interface not in self.textboxes:
       self.textboxes[interface] = []
@@ -223,7 +212,7 @@ class TkWin:
 
   def addScale(self, length=None, orient=tk.VERTICAL, start=None, end=None, command=labels.null, variable=False, partialarg = "*self*", interface="mainmenu", font=None, convertpartialarg=True, rewidget=False):
     """
-    Adds a user entry field to the given interface
+    Adds a bar which ranges between two numbers to the given interface
     """
     if interface not in self.scales:
       self.scales[interface] = []
@@ -249,6 +238,7 @@ class TkWin:
     """
     location = widget.location
     widget.ungrid()
+    self.gridded.remove(widget)
     return location
 
   def replaceWidget(self, replaced, replacer, option = None):
@@ -258,21 +248,14 @@ class TkWin:
     location = self.ungridWidget(replaced)
     self.gridWidget(replacer, location[0], location[1], location[2], location[3])
 
-  #Random Window Variable Functions
-  def addVariable(self, name, value, interface = GLOBAL):
-    self.vars[interface][name] = value
-
-  def getVariable(self, name, interface = GLOBAL):
-    return self.vars[interface][name]
-
-  def processGuiStack(self, guiname):
+  def processGuiStack(self, stackmap):
     """
-    Stack items in self.stackmap on top of each other according to their rows
+    Grids the items in self.stack in appropriate column according to the stackrules file used
     """
-    stackmap = stackmaps[guiname]
+    stackrules = stackmaps[stackmap]
     row = 0
     for key in self.stacks:
-      gridparams = stackmap[key]
+      gridparams = stackrules[key]
       column, columnspan = gridparams[0], gridparams[1]-gridparams[0]+1
       rowspan = gridparams[2]
       for widget in self.stacks[key]:
@@ -289,6 +272,7 @@ class TkWin:
     [0, 0, 1, 1, 1]],
     {1: "camera1", 2: "radio0_1}]
     would place the first camera the window recognizes on column 2 row 1 with a columnspan of 3 and rowspan of 3
+    Only uses the first two items in the given guimap
     """
     print(self.cameras)
     print(guiname)
@@ -307,7 +291,7 @@ class TkWin:
   
   def getWidgetFromName(self, widgetname, guiname):
     """
-    Retrieves a widget based on its gui reference name and parent interface
+    Retrieves a widget based on its gui reference name
     """
     widgettype, num = splitWidgetName(widgetname)
     #Finds widget based on its type
@@ -335,8 +319,13 @@ class TkWin:
     return widget
 
   def killLoop(self):
+    """
+    Tries to stop everything from functioning
+    Usually ignored: This may be fixed in the future
+    """
     self.active = False
 
+  #Depreciated in favor of several functions under configuration.py
   def pollForCams(self, camrange):
     """
     Checks for active cams on the network
@@ -344,41 +333,26 @@ class TkWin:
     for num in range(camrange):
       self.addCamera(num)
 
-  def switchUi(self, guiname, gridstyle="guimap"):
+  def switchUi(self, guiname):
     """
-    Configures the window for the given the guifile to be setup and any stray widgets to clear
+    Configures the window for the next gui to be set up
+    Given the regular match socket is used, this will automatically cause the respective gui's menu function to be called
     """
     self.tearDown()
     #Configures window for the new gui
-    if not config.configwascalled[guiname]:
-        config.configfunctions[guiname](self)
+    config.configfunctions[guiname](self)
     #Grids gui widgets
     print(guiname)
-    hasguimap = guiname in guimaps
-    hasstack = guiname in stackmaps
-    #If a single gridding style is specified
-    if gridstyle == "guimap":
-      self.processGuiMap(guiname)
-    elif gridstyle == "stack":
-      self.processGuiStack(guiname)
-    else:
-      #Tries to grid interface based on what is avalible
-      #Will grid with both stack and map if possible
-      if hasguimap:
-        self.processGuiMap(guiname)
-      if hasstack:
-        self.processGuiStack(guiname)
-      if not hasguimap and not hasstack:
-        raise FileNotFoundError("No stack file or gui file found for interface {}. Have you added the file name to visglobals.py?".format(guiname))
+    self.processGuiMap(guiname)
+    #If a gui file references stack rules, use those stack rules to grid widgets in self.stacks
+    if "stackrules" in guimaps[guiname][2]:
+      self.processGuiStack(guimaps[guiname][2]["stackrules"])
     self.interface = guiname
-
-  def setWindowVars(self, setup):
-    interface = setup.pop("interface")
-    self.vars[interface] = setup
 
   def tearDown(self):
     """
-    Clears the window of all the widgets grided by lastgui
+    Clears the window of all the widgets in the gridded registry
+    If widgets are added to the window indirectly, this will not work.
     """
     print(self.gridded)
     for widget in self.gridded:
@@ -388,6 +362,7 @@ class TkWin:
   def emergencyShutdown(self):
     """
     Safely shuts down system in case of error
+    Needs to be integrated into competiton code
     """
     for cam in self.cameras:
       cam.shutdown()
@@ -395,6 +370,9 @@ class TkWin:
       cam.shutdown()
   
 def splitWidgetName(widgetname):
+  """
+  Splits a widget's gui file name into the widget's type and number
+  """
   print(widgetname)
   #Seperates widget's end tag from its type indicator
   num = int(re.sub(r"[a-zA-Z]", "", widgetname))
@@ -402,6 +380,9 @@ def splitWidgetName(widgetname):
   return widgettype, num
   
 def isValidWidget(widgettype):
+  """
+  Determines if the given string will be recognized as a widget type
+  """
   print(widgettypes)
   if widgettype in widgettypes:
     return True
@@ -429,11 +410,17 @@ def findWidgetSpans(guimap):
   return widgetspans
     
 def makePartial(func, partial, self=None, convertpartialarg = False):
+  """
+  Makes a partial function out of an argument and command
+  """
   partial = processPartialArg(partial, self=self)
   partialfunc = fts.partial(func, partial)
   return partialfunc
   
 def processPartialArg(partial, self=None, convertfromnum = False):
+  """
+  Accounts for special cases where the partial argument needs to be modified to function as intended
+  """
   if partial == SELF:
     if self:
       arg = self

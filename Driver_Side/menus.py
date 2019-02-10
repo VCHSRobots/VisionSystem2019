@@ -32,10 +32,11 @@ def settingsMenu(self):
     while self.interface == "settings":
         pass
 
+"""
 def matchMenu(self):
-    """
+    ""
     Main Menu Interface
-    """
+    ""
     if not config.configwascalled["match"]:
         config.configureMatchInterfaces(self)
     if settings["matchtype"] == "multiview":
@@ -46,13 +47,13 @@ def matchMenu(self):
     if settings["matchtype"] == "multiview":
         self.interface = "multiview"
         multiviewMenu(self)
+"""
 
 def multiviewMenu(self):
     """
     Multiview Menu Interface
     """
     starttime = time.perf_counter()
-    commands.setupMultiview(self)
     timeleft = 180
     lastmatchcams = self.cameras["match"]
     while self.interface == "multiview":
@@ -66,6 +67,10 @@ def multiviewMenu(self):
             #TODO: Make this do something appropriate when the match ends
             timeleft = 180
 
+def splitcamMenu(self):
+    while self.interface == "splitcam":
+        commands.updateStagedCams(self)
+
 def testMenu(self):
     """
     Multi camera test interface
@@ -77,7 +82,9 @@ def testMenu(self):
         lastmatchcams = self.cameras["test"]
         print("here")
 
-matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, "onecammatch": null, "multiview": multiviewMenu, "test": testMenu}
+matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
+                "onecammatch": null, "multiview": multiviewMenu,   
+                "test": testMenu, "splitcam": splitcamMenu}
 
 #Ui Management Functions
 def switchUi(self, guiname):

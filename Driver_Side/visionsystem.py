@@ -47,7 +47,7 @@ def startSystem():
     """
     Initiates the vision system application for the 2019 First Robotics Competition
     """
-    menustructure = {"Test": {"Do Nothing": null, "Switch Menus_*self*": menus.matchMenu}}
+    menustructure = {"Test": {"Do Nothing": null, "Switch Menus_*self*": null}}
     win = tkwin.TkWin("Vision System", menustructure=menustructure)
     #Sets the function to be called when window is initated
     systemthread = makeSystemThread()

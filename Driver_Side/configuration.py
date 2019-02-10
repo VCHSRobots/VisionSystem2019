@@ -9,19 +9,20 @@ import tkwin as win
 import commands
 import menus
 import visglobals
-from visglobals import guimaps, visiontable, camnamenums
+from visglobals import guimaps, visiontable, camnamenums, setups, competitioninterface
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
-configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False}
+configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False, "splitcam": False}
 #Arguments which need to be converted from integers to be passed to getWidgetFromName
 intargs = ["camnum", "length", "height", "start?", "end?"]
+camerasmade = False
 global commandfuncs
 
 #Interface Configuration Functions
 def configureMainMenu(self):
   global configwascalled
-  self.addButton(text = "Start Match!", command = self.switchUi, partialarg = "multiview", interface = "mainmenu")
+  self.addButton(text = "Start Match!", command = self.switchUi, partialarg = competitioninterface, interface = "mainmenu")
   self.addButton(text = "Exit", command = self.root.quit, interface = "mainmenu")
   configwascalled["mainmenu"] = True
 
@@ -78,53 +79,71 @@ def configureMultiview(self):
   self.vars["framerate"] = 4
   configwascalled["multiview"] = True
 
-def configureMatchCameras(self, neededcams = (0, 1, 2, 3), recams=False):
-  """
-  Configures the four cameras needed for match interfaces
-  """
-  #For the most part, an alias of addCams(self, neddedcams=(0,1,2,3), interface='match')
-  if recams:
-    cams = addCams(self, neededcams=neededcams, interface="match", recams=True) #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
-    return cams
-  else:
-    addCams(self, neededcams, interface="match")
-
-def copyMatchCameras(self, interface):
-  self.cameras[interface] = []
-  for camera in self.cameras["match"]:
-    self.cameras[interface].append(camera)
-
 def configureFourCam(self):
   self.vars["bandwidthreduced"] = False
 
 def configureSplitCam(self):
+  global configwascalled
+  configureStacks(self, "splitcam")
   self.vars["staged"] = self.cameras["match"][0]
   self.vars["isstaged"] = [0]
   self.vars["bandwidthreduced"] = False
+  configwascalled["splitcam"] = True
 
 def configureOneCam(self):
   self.vars["staged"] = self.cameras["match"][0]
   self.vars["isstaged"] = [0]
   self.vars["bandwidthreduced"] = False
 
-def configureFromSetup(self, setup):
-  commandfuncs = {"toggleBandwidth": commands.toggleBandwidth, "frontCam": commands.frontCam, "backCam": commands.backCam, "leftCam": commands.leftCam, "rightCam": commands.rightCam}
+def configureStacks(self, interface):
+  setup = setups[interface]
+  commandfuncs = {"toggleBandwidth": commands.toggleBandwidth, "showFront": commands.frontCam, "showBack": commands.backCam, "showLeft": commands.leftCam, "showRight": commands.rightCam}
   self.stacks = {}
   self.stacks["buttons"] = []
-  interface = setup["interface"]
   buttons = setup["buttons"]
   configureMatchCameras(self, recams=True)
   copyMatchCameras(self, interface)
   #Caches nedded widgets in their proper stack locations
   for buttonargs in buttons:
-    button = self.addButton(command=commandfuncs[buttonargs["command"]], interface=interface)
+    print(self.stacks)
+    button = self.addButton(text = buttonargs["text"], command=commandfuncs[buttonargs["command"]], interface=interface, rewidget=True)
     self.stacks["buttons"].append(button)
-  configfunctions[interface]()
 
-configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, "multiview": configureMultiview, "test": configureTest, "fourcam": configureFourCam, "splitcam": configureSplitCam, "onecam": configureOneCam, "configurable": configureFromSetup}
+
+configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, 
+                  "multiview": configureMultiview, "test": configureTest, 
+                  "fourcam": configureFourCam, "splitcam": configureSplitCam, 
+                  "onecam": configureOneCam}
 
 #Supplementary Configuration Functions
+def configureMatchCameras(self, neededcams = (0, 1, 2, 3), recams=False):
+  """
+  Adds the four cameras needed for most match interfaces to window.cameras["match"]
+  """
+  #For the most part, an alias of addCams(self, neddedcams=(0,1,2,3), interface='match')
+  global camerasmade
+  if camerasmade:
+    return
+  if recams:
+    cams = addCams(self, neededcams=neededcams, interface="match", recams=True) #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
+    return cams
+  else:
+    addCams(self, neededcams, interface="match")
+  camerasmade = True
+
+def copyMatchCameras(self, interface):
+  """
+  Copies the cameras in the match interface to the specified interface
+  """
+  self.cameras[interface] = []
+  for camera in self.cameras["match"]:
+    self.cameras[interface].append(camera)
+
+#Depreciated
 def shareMatchCameras(self):
+  """
+  Copies match interface cameras to two specific interfaces which won't be used in competition
+  """
   matchinters = ["onecammatch", "multiview"]
   try:
     for inter in matchinters:
@@ -133,11 +152,17 @@ def shareMatchCameras(self):
     print("'match' key does not exist. Were any cameras connected on the pi side?")
 
 def addAvalibleCameras(self, interface, maxind = 9):
+  """
+  Adds all cameras stated to be avalible over NetworkTables to the given interface within range(maxind)
+  """
   cams = commands.getActiveCams(maxind)
   for camnum in cams:
     self.addCam(camnum=camnum, interface=interface)
 
 def addCams(self, neededcams, interface, recams=False):
+  """
+  Adds a specific list of cameras to a specfied window interface
+  """
   #cams = [commands.isCamActive(cam) for cam in neededcams]
   if recams:
     cams = []
@@ -145,12 +170,15 @@ def addCams(self, neededcams, interface, recams=False):
     cams = None
   for camnum in neededcams:
     if recams:
-      cams.append(self.addCamera(camnum=camnum, interface=interface, recam=True))
+      cams.append(self.addCamera(camnum=camnum, interface=interface, rewidget=True))
     else:
       self.addCamera(camnum=camnum, interface=interface)
   return cams
 
 def convertIntArgs(args):
+  """
+  Converts arguments which are strings due to json constraints to integers
+  """
   for arg in intargs:
         if arg in args:
           if "?" in arg:

@@ -461,7 +461,7 @@ def splitToMains(self):
 #Onecam functions
 def switchCam(self, camnum):
     camera = self.cameras["match"][camnum]
-    self.replace(self.vars["staged"], camera)
+    self.replaceWidget(self.vars["staged"], camera)
     self.vars["staged"] = camera
 
 def frontCam(self):
