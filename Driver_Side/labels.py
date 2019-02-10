@@ -104,7 +104,7 @@ class Camera(Widget):
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
-        #TODO Make socket timeout if it takes too long
+        #Passes over image processing if socket times out
         img = self.recvWithTimeout()
         if img == b"":
             return False

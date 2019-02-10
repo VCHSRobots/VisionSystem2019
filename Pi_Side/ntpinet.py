@@ -62,7 +62,7 @@ def processImg(img, camvals):
   img = cv2.cvtColor(img, camvals["color"])
   img = Image.fromarray(img)
   imgbytes = io.BytesIO()
-  img.save(imgbytes, format = "JPEG") #, quality=camvals["quality"])
+  img.save(imgbytes, format = "JPEG", quality=camvals["quality"])
   imgbytes = imgbytes.getvalue()
   imgbytes = zlib.compress(imgbytes, camvals["compression"])
   return imgbytes
@@ -168,11 +168,12 @@ def runMatch(time=180):
   cams = scanForCams(numrange=(0,9))
   for camnum in cams:
     table.putBoolean("{0}isactive".format(camnum), True)
-    exportImage(cams[camnum], camnum, sock = sock, table = table)
+    #exportImage(cams[camnum], camnum, sock = sock, table = table)
   #Opens bound socket and listens for start signal
   listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   listener.bind((piip, 5800))
   listener.recv(1) #Listens for any byte
+  listener.shutdown(socket.SHUT_RDWR)
   listener.close()
   #Exports vision system stream
   exportManagedStream(sock, cams, ip=ip, timeout=time)
