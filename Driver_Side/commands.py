@@ -59,14 +59,6 @@ def turnOffUngridedCams(self):
 entries = ["interface", "mainframes", "sideframes", "mainwidth", "mainheight", "sidewidth", "sideheight", "mainjpegquality", "sidejpegquality"]
 interfaces = {"Four Camera View": "fourcam", "Two Camera View (Swapable)": "twocam", "One Camera View (Swapable": "onecam"}
 
-def saveSetup(self):
-    filename = "{}.setup".format(self.entries[0].getValue())
-    setup = {}
-    for ind, entry in enumerate(entries):
-        setup[entry] = interfaces[self.entries[ind].getValue()]
-    f = open(filename, "w")
-    json.dump(setup, filename)
-
 #Multiview Commands
 mains = [0, 1]
 sides = [2, 3]
@@ -425,6 +417,123 @@ def resetColor(self, staged):
         else:
             color = False
     self.vars["color"] = color
+
+#Splitcam functions
+defaultlocation = (1, 1, 16, 16)
+
+def stageOneCam(self, camnum):
+    camera = self.cameras["match"][camnum]
+    self.replace(self.vars["staged"], camera)
+    self.vars["staged"] = camera
+
+def splitCamInTwo(self, cams=[0,1], horizontal=True):
+    if type(self.vars["staged"]) == list:
+        for camera in self.vars["staged"]:
+            camera.ungrid()
+    else:
+        self.vars["staged"].ungrid()
+    if horizontal:
+        rows = defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2)
+        columns = defaultlocation[1], defaultlocation[1]
+        rowspans = int(defaultlocation[2]/2), int(defaultlocation[2]/2)
+        columnspans = defaultlocation[3], defaultlocation[3]
+    else:
+        rows = defaultlocation[0], defaultlocation[0]
+        columns = defaultlocation[1], int((defaultlocation[3]-defaultlocation[1])/2)
+        rowspans = defaultlocation[2], defaultlocation[2]
+        columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
+    for ind in range(2):
+        self.setOnGrid(self.cameras["match"][cams[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
+    self.vars["staged"] = cams
+
+def splitCamInFour(self, order=[0,1,2,3]):
+    rows = defaultlocation[0], defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2), int((defaultlocation[2]-defaultlocation[0])/2)
+    columns = defaultlocation[1], int((defaultlocation[3]-defaultlocation[1])/2), defaultlocation[1], int((defaultlocation[3]-defaultlocation[1])/2)
+    rowspans = int(defaultlocation[2]/2), int(defaultlocation[2]/2)
+    columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
+    for ind in range(4):
+        self.setOnGrid(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
+    self.vars["staged"] = order
+
+def splitToMains(self):
+    splitCamInTwo([0, 1])
+
+#Onecam functions
+def switchCam(self, camnum):
+    camera = self.cameras["match"][camnum]
+    self.replace(self.vars["staged"], camera)
+    self.vars["staged"] = camera
+
+def frontCam(self):
+    switchCam(self, 0)
+
+def backCam(self):
+    switchCam(self, 1)
+
+def leftCam(self):
+    switchCam(self, 2)
+
+def rightCam(self):
+    switchCam(self, 3)
+
+#Universal Competition Functions
+def toggleBandwidth(self):
+    if self.vars["bandwidthreducted"]:
+        normalBandwidthMode(self)
+    else:
+        lowBandwidthMode(self)
+
+def normalBandwidthMode(self):
+    if type(self.vars["staged"]) == list:
+        for ind in self.vars["isstaged"]:
+            camera = self.cameras[ind]
+            main = ind in mains
+            increaseBandwidth(camera, main)
+    else:
+        main = self.vars["isstaged"][0] in mains
+        increaseBandwidth(self.vars["staged"], main)
+    self.vars["bandwidthreduced"] = False
+
+def lowBandwidthMode(self):
+    if type(self.vars["staged"]) == list:
+        for ind in self.vars["isstaged"]:
+            camera = self.cameras[ind]
+            main = ind in mains
+            reduceBandwidth(camera, main)
+    else:
+        main = self.vars["isstaged"][0] in mains
+        reduceBandwidth(self.vars["staged"], main)
+    self.vars["bandwidthreduced"] = True
+
+def reduceBandwidth(camera, main=True):
+    if main:
+        camera.framerate = 10
+        camera.width = 91
+        camera.height = 68
+        camera.quality = 40
+    else:
+        camera.framerate = 8
+        camera.width = 34
+        camera.height = 45
+        camera.quality = 40
+    camera.updateOverNetwork()
+
+def increaseBandwidth(camera, main=True):
+    if main:
+        camera.framerate = 20
+        camera.width = 365
+        camera.height = 274
+        camera.quality = 95
+    else:
+        camera.framerate = 15
+        camera.width = 137
+        camera.height = 182
+        camera.quality = 95
+    camera.updateOverNetwork()
+
+def updateStagedCams(self):
+    for cam in self.vars["staged"]:
+        cam.updateImgOnLabel()
 
 #Supplemetary functions to Commands
 def getActiveCams(numrange = 0, *args):

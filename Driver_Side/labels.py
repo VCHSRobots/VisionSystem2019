@@ -253,17 +253,17 @@ class LocalCamera(Widget):
         self.cam.release()
 
 class Entry(Widget):
-    def __init__(self, root):
+    def __init__(self, root, font=fonts.Textbox):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = tk.Entry(root, textvariable=self.value)
+        self.widget = tk.Entry(root, textvariable=self.value, font=font)
         self.location = ()
 
 class Button(Widget):
-    def __init__(self, root, text, command):
+    def __init__(self, root, text, command, font=fonts.Button):
         self.root = root
         self.text = tk.StringVar()
-        self.widget = tk.Button(root, textvariable=self.text, command=command, font=fonts.Button)
+        self.widget = tk.Button(root, textvariable=self.text, command=command, font=font)
         self.text.set(text)
         self.location = ()
     
@@ -274,37 +274,77 @@ class Button(Widget):
         return self.text.get()
 
 class Checkbox(Widget):
-    def __init__(self, root, text, command, onval=True, offval=False):
+    def __init__(self, root, text, command, onval=True, offval=False, font=fonts.Button):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = tk.Checkbutton(root, text=text, command=command, onvalue=onval, offvalue=offval, font=fonts.Button)
+        self.widget = tk.Checkbutton(root, text=text, command=command, onvalue=onval, offvalue=offval, font=font)
         self.location = ()
 
+class RadioButtonParent(Widget):
+    def __init__(self, root, buttons, font=fonts.Button, vartype = tk.IntVar):
+        self.root = root
+        self.font = font
+        self.value = vartype()
+        #Buttons are a (displaytext, value) pair
+        #They must all be of the same type
+        self.buttons = [RadioButton(root, text=text, variable=self.value, onvalue=val, font=self.font) for text, val in buttons]
+        self.location = ()
+
+    def addButton(self, text, value):
+        self.buttons.append(RadioButton(self.root, text=text, variable=self.value, onvalue=value, font=self.font))
+
+    def setOnGrid(self, option, row, column, columnspan, rowspan, perbutton=1):
+        rowmode = True
+        if perbutton < 1:
+            raise ValueError("Rowspan cannot be less than one")
+        if rowspan >= len(self.buttons)*perbutton:
+            pass
+        elif columnspan >= len(self.buttons)*perbutton:
+            rowmode = False
+        else:
+            if perbutton > 1:
+                perbuttonmessage = " with each button taking {} rows/columns"
+            else:
+                perbuttonmessage = ""
+            raise ValueError("Rowspan of {} and columnspan of {} are too small to support {} buttons{}.".format(rowspan, columnspan, len(self.buttons), perbuttonmessage))
+        if rowmode:
+            row = row
+            for button in self.buttons:
+                button.setOnGrid(row, column, columnspan=columnspan, rowspan=perbutton)
+            row += perbutton
+        else:
+            column = column
+            for button in self.buttons:
+                button.setOnGrid(row, column, columnspan=perbutton, rowspan=rowspan)
+            column += perbutton
+        print("Unimplemented feature: Set parent radio button on grid")
+
+    def ungrid(self):
+        #Ungrids a single option from the set of RadioButton
+        for button in self.buttons:
+            button.ungrid()
+        print("Unimplemented")
+
 class RadioButton(Widget):
-    def __init__(self, root, buttons):
+    def __init__(self, root, text, variable=tk.BooleanVar, onvalue=True, font=fonts.Button):
         self.root = root
         #Buttons are a (displaytext, value) pair
-        self.value = tk.StringVar()
-        self.options = [tk.Radiobutton(root, text=text, variable=self.value, value=val, font=fonts.Button) for text, val in buttons]
-        self.location = {}
+        self.text = tk.StringVar()
+        if variable == type:
+            self.value = variable()
+        else:
+            self.value = variable
+        self.widget = tk.Radiobutton(root, text=self.text, textvariable=self.value, onvalue=onvalue, font=font)
+        self.location = ()
 
-    def addOption(self, text, value):
-        self.options.append(tk.Radiobutton(self.root, text=text, variable=self.value, value=value))
-
-    def setOnGrid(self, option, row, column, columnspan, rowspan):
-        self.options[option].grid(column=column, row=row, columnspan=columnspan, rowspan=rowspan)
-        self.location[option] = (column, row, columnspan, rowspan)
-
-    def ungrid(self, option):
-        #Ungrids a single option from the set of RadioButton
-        self.options[option].grid_forget()
-        self.location.pop(option)
+    def changeText(self, text):
+        self.text.set(text)
 
 class Combobox:
-    def __init__(self, root, values=[], onchange=null):
+    def __init__(self, root, values=[], onchange=null, font=fonts.Button):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = ttk.Combobox(root, textvariable=self.value, font=fonts.Button)
+        self.widget = ttk.Combobox(root, textvariable=self.value, font=font)
         self.values = values
         self.widget["values"] = tuple(values)
         self.onchange = onchange
@@ -318,10 +358,10 @@ class Combobox:
         self.widget["values"] = tuple(self.values)
 
 class Listbox:
-    def __init__(self, root, height, values, multipleselect=False):
+    def __init__(self, root, height, values, multipleselect=False, font=fonts.Button):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = tk.Listbox(root, height=height, font=fonts.Button)
+        self.widget = tk.Listbox(root, height=height, font=font)
         self.values = values
         self.multipleselect = multipleselect
         self.widget["listvariable"] = values
@@ -350,9 +390,9 @@ class Listbox:
             self.widget["selectmode"] = "browse"
 
 class Text(Widget):
-    def __init__(self, root, text):
+    def __init__(self, root, text, font=fonts.Textbox):
         self.text = tk.StringVar()
-        self.widget = tk.Label(root, textvariable=self.text, font=fonts.Textbox)
+        self.widget = tk.Label(root, textvariable=self.text, font=font)
         self.text.set(text)
         self.location = ()
 
@@ -365,37 +405,33 @@ class Text(Widget):
     def getValue(self):
         return self.text.get()
 
-class Scale:
-    def __init__(self, root, length, orient=tk.VERTICAL, start=None, end=None, command=null, variable=False):
+class Scale(Widget):
+    def __init__(self, root, length, orient=tk.VERTICAL, start=None, end=None, command=null, variable=False, font=fonts.Button):
         #Defaults start and end values if either are not defined
         self.root = root
-        self.value = None
+        self.value = tk.DoubleVar()
         self.location = ()
-        if (not start) and (not end):
+        if (not start or not end) and (not length):
+            raise ValueError("No length value passed and start and end not explicitly defined")
+        elif (not start) and (not end):
             start = 0
             end = start+length
         elif (not start) and end:
             start = end-length
         elif start and (not end):
             end = start+length
-        self.widget = ttk.Scale(root, orient=orient, length=length, from_=start, to=end, font=fonts.Button)
+        self.widget = ttk.Scale(root, var=self.value, orient=orient, length=length, from_=start, to=end, font=fonts.Button)
         if command is not null:
             self.configCommand(command)
         if variable:
             self.value = tk.StringVar()
             self.widget["variable"] = self.value
 
-    def getValue(self):
-        """
-        Returns any input from the user-input field
-        """
-        return self.widget.get()
-
     def setValue(self, value):
         """
         Sets scale value
         """
-        self.widget.set(value)
+        self.value.set(value)
 
     def configCommand(self, command):
         self.widget["command"] = command

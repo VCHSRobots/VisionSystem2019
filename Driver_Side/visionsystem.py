@@ -37,7 +37,7 @@ def testSystem():
     print(win.cameras)
     guimap = json.load(guifile)
     guifile.close()
-    win.processGuiMap(guimap, "mainmenu")
+    win.processGuiMap("mainmenu")
     try:
         win.runWin()
     finally:
@@ -54,9 +54,9 @@ def startSystem():
     win.setThread(systemthread)
     #Sets up the main menu
     configuration.configureMainMenu(win)
-    win.processGuiMap(visglobals.guimaps["mainmenu"], "mainmenu")
+    win.processGuiMap("mainmenu")
     win.runWin()
-
+    
 def makeSystemThread():
     """
     Thread fucntion to be called by the tkinter class
@@ -93,7 +93,7 @@ def testGrid():
     guifile = open("test.gui")
     guimap = json.load(guifile)
     guifile.close()
-    win.processGuiMap(guimap, "mainmenu")
+    win.processGuiMap("mainmenu")
     win.setThread(alphaLoop)
     print(win.thread)
     win.runWin()

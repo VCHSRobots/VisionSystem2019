@@ -13,6 +13,13 @@ def openGuiFile(name):
   guifile.close()
   return gui
 
+def openStackFile(name):
+  print(name)
+  guifile = open("./Guis/{0}.stack".format(name))
+  gui = json.load(guifile)
+  guifile.close()
+  return gui
+
 def null():
   pass
 
@@ -29,7 +36,14 @@ widgettypes = ["camera", "localcamera", "button", "entry", "checkbox", "listbox"
 
 #Menu Guis
 mapnames = ["mainmenu", "settings", "onecammatch", "multiview", "test"]
-guimaps = {mapname: openGuiFile(mapname) for mapname in mapnames}
+
+#Defines rows for each catagory of widget (key)
+stacknames = ["configurable"]
+guimaps = {name: openGuiFile(name) for name in mapnames}
+stackmaps = {name: openStackFile(name) for name in stacknames}
+
+#Camera numbers by their name
+camnamenums = {"Front": 0, "Back": 1, "Left": 2, "Right": 3}
 
 #NetworkTables
 nt.initialize("roborio-4415-frc.local")
