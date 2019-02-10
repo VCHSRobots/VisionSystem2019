@@ -6,7 +6,7 @@ import socket
 import time
 from networktables import NetworkTables as nt
 
-competitoninterface = "splitcam"
+competitioninterface = "splitcam"
 
 def openGuiFile(name):
   print(name)
