@@ -80,7 +80,10 @@ def configureMultiview(self):
   configwascalled["multiview"] = True
 
 def configureFourCam(self):
+  configureStacks(self, "fourcam")
   self.vars["bandwidthreduced"] = False
+  self.vars["staged"] = self.cameras["match"]
+  self.vars["isstaged"] = [0, 1, 2, 3]
 
 def configureSplitCam(self):
   global configwascalled
@@ -91,23 +94,32 @@ def configureSplitCam(self):
   configwascalled["splitcam"] = True
 
 def configureOneCam(self):
+  configureStacks(self, "onecam")
   self.vars["staged"] = self.cameras["match"][0]
   self.vars["isstaged"] = [0]
   self.vars["bandwidthreduced"] = False
 
 def configureStacks(self, interface):
   setup = setups[interface]
-  commandfuncs = {"toggleBandwidth": commands.toggleBandwidth, "showFront": commands.frontCam, "showBack": commands.backCam, "showLeft": commands.leftCam, "showRight": commands.rightCam}
+  commandfuncs = {"toggleBandwidth": commands.toggleBandwidth, "showFront": commands.frontCam, 
+                  "showBack": commands.backCam, "showLeft": commands.leftCam, 
+                  "showRight": commands.rightCam, "splitToMains": commands.splitToMains,
+                  "splitToSides": commands.splitToSides, "splitToAll": commands.splitToAll}
   self.stacks = {}
+  self.vars["namedwidgets"] = {}
   self.stacks["buttons"] = []
   buttons = setup["buttons"]
   configureMatchCameras(self, recams=True)
   copyMatchCameras(self, interface)
-  #Caches nedded widgets in their proper stack locations
+  #Caches nedded widgets in their proper stack location
   for buttonargs in buttons:
     print(self.stacks)
+    if not buttonargs["command"] in commandfuncs:
+      continue
     button = self.addButton(text = buttonargs["text"], command=commandfuncs[buttonargs["command"]], interface=interface, rewidget=True)
     self.stacks["buttons"].append(button)
+    #Uses the the function's name as a string by which the widget can be referred to
+    self.vars["namedwidgets"][buttonargs["command"]] = button
 
 
 configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, 

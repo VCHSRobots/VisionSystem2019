@@ -75,6 +75,7 @@ class Camera(Widget):
         #Makes a listener socket bound to this specific camera
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((ip, camnum+5800))
+        self.location = ()
         
     def updateImgOnLabel(self):
         """
@@ -93,17 +94,27 @@ class Camera(Widget):
         """
         visiontable.putBoolean("{0}active".format(self.camnum), self.active)
         visiontable.putNumber("{0}width".format(self.camnum), self.width)
+        visiontable.putNumber("{0}size".format(self.camnum), self.maxsize)
         visiontable.putNumber("{0}height".format(self.camnum), self.height)
         visiontable.putBoolean("{0}color".format(self.camnum), self.color)
         visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
-        #visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
         visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
         visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
         
+    def checkSize(self):
+        """
+        Checks if the buffer size is large enough to hold the incoming image
+        """
+        overflow =  visiontable.getNumber("{0}overflow".format(self.camnum), 0)
+        if overflow:
+            self.maxsize += overflow
+            self.updateOverNetwork()
+
     def getImgFromNetwork(self):
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
+        self.checkSize() #Checks if buffer is large enough to hold incoming image 
         #Passes over image processing if socket times out
         img = self.recvWithTimeout()
         if img == b"":

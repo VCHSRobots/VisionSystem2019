@@ -1,1 +1,5 @@
-{"buttons": [{"text": "Front", "command": "showFront"}, {"text": "Back", "command": "showBack"}, {"text": "Left", "command": "showLeft"}, {"text": "Right", "command": "showRight"}], "interface": "splitcam"}
+{"buttons": [{"text": "Front", "command": "showFront"}, 
+            {"text": "Back", "command": "showBack"}, 
+            {"text": "Left", "command": "showLeft"}, 
+            {"text": "Right", "command": "showRight"}, 
+            {"text": "Split Mains", "command": "splitToMains"}]}

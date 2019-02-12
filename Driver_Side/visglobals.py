@@ -48,7 +48,10 @@ widgettypes = ["camera", "localcamera",
               "text", "scale"]
 
 #Menu Guis
-mapnames = ["mainmenu", "settings", "onecammatch", "multiview", "test", "splitcam"]
+mapnames = ["mainmenu", "settings", 
+            "onecammatch", "multiview", 
+            "test", "splitcam",
+            "onecam", "fourcam"]
 
 #Loads span parameters for column griding
 stacknames = ["configurable"]
@@ -56,7 +59,7 @@ guimaps = {name: openGuiFile(name) for name in mapnames}
 stackmaps = {name: openStackFile(name) for name in stacknames}
 
 #Loads files which define the contents of a window's stack cache widgets which are gridded accoring to the above stack rules
-setupnames = ["splitcam"]
+setupnames = ["splitcam", "onecam", "fourcam"]
 setups = {name: openSetupFile(name) for name in setupnames}
 
 #Camera numbers by their name

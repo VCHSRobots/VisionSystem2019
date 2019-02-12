@@ -426,7 +426,7 @@ def stageOneCam(self, camnum):
     self.replace(self.vars["staged"], camera)
     self.vars["staged"] = camera
 
-def splitCamInTwo(self, cams=[0,1], horizontal=True):
+def splitCamInTwo(self, cams, horizontal=True):
     if type(self.vars["staged"]) == list:
         for camera in self.vars["staged"]:
             camera.ungrid()
@@ -443,8 +443,14 @@ def splitCamInTwo(self, cams=[0,1], horizontal=True):
         rowspans = defaultlocation[2], defaultlocation[2]
         columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
     for ind in range(2):
-        self.setOnGrid(self.cameras["match"][cams[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
-    self.vars["staged"] = cams
+        self.gridWidget(self.cameras["match"][cams[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
+    self.vars["staged"] = [self.cameras["match"][cams[0]], self.vars["match"][cams[1]]]
+
+def splitToMains(self):
+    splitCamInTwo(self, cams=[0, 1])
+
+def splitToSides(self):
+    splitCamInTwo(self, cams=[2, 3])
 
 def splitCamInFour(self, order=[0,1,2,3]):
     rows = defaultlocation[0], defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2), int((defaultlocation[2]-defaultlocation[0])/2)
@@ -452,14 +458,27 @@ def splitCamInFour(self, order=[0,1,2,3]):
     rowspans = int(defaultlocation[2]/2), int(defaultlocation[2]/2)
     columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
     for ind in range(4):
-        self.setOnGrid(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
-    self.vars["staged"] = order
+        self.gridWidget(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
+    self.vars["staged"] = [self.cameras["match"][order[0]], self.vars["match"][order[1]], [self.cameras["match"][order[2]], self.vars["match"][order[3]]]]
 
-def splitToMains(self):
-    splitCamInTwo([0, 1])
+def splitToAll(self):
+    splitCamInFour(self)
+
+def ungridStaged(self):
+    if type(self.vars["staged"]) == list:
+        for camera in self.vars["staged"]:
+            self.ungridWidget(camera)
+    else:
+        self.ungridWidget(self.vars["staged"])
 
 #Onecam functions
 def switchCam(self, camnum):
+    ungridStaged(self)
+    camera = self.cameras["match"][camnum]
+    self.gridWidget(camera, defaultlocation[0], defaultlocation[1], defaultlocation[2], defaultlocation[3])
+    self.vars["staged"] = camera
+
+def switchOneCam(self, camnum):
     camera = self.cameras["match"][camnum]
     self.replaceWidget(self.vars["staged"], camera)
     self.vars["staged"] = camera
@@ -478,15 +497,18 @@ def rightCam(self):
 
 #Universal Competition Functions
 def toggleBandwidth(self):
-    if self.vars["bandwidthreducted"]:
+    print(self)
+    if self.vars["bandwidthreduced"]:
         normalBandwidthMode(self)
+        self.vars["namedwidgets"]["toggleBandwidth"].setText("Reduce Bandwidth")
     else:
         lowBandwidthMode(self)
+        self.vars["namedwidgets"]["toggleBandwidth"].setText("Return To Normalcy!")
 
 def normalBandwidthMode(self):
     if type(self.vars["staged"]) == list:
         for ind in self.vars["isstaged"]:
-            camera = self.cameras[ind]
+            camera = self.cameras["match"][ind]
             main = ind in mains
             increaseBandwidth(camera, main)
     else:
@@ -497,7 +519,7 @@ def normalBandwidthMode(self):
 def lowBandwidthMode(self):
     if type(self.vars["staged"]) == list:
         for ind in self.vars["isstaged"]:
-            camera = self.cameras[ind]
+            camera = self.cameras["match"][ind]
             main = ind in mains
             reduceBandwidth(camera, main)
     else:

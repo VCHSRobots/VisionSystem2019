@@ -5,6 +5,7 @@
 import threading
 import networktables
 import json
+import timer
 import re #Used for string processing
 import functools as fts
 import tkinter as tk
@@ -55,6 +56,7 @@ class TkWin:
     self.menus = menustructure
     self.initMenuSystem()
     self.interface = "mainmenu"
+    self.timer = timer.Timer()
 
   def runWin(self):
     """
@@ -78,6 +80,7 @@ class TkWin:
     processMenuHierarchy(self.toplevel, self.menus, self)
     self.root.config(menu=self.toplevel)
 
+  #Widget Functions
   def addCamera(self, camnum, interface="mainmenu", rewidget=False):
     """
     Adds a listener for a remote camera at a specified camnum socket
@@ -129,7 +132,7 @@ class TkWin:
     """
     if interface not in self.buttons:
       self.buttons[interface] = []
-    command = makePartial(command, partialarg, self)
+    command = makePartial(command, partialarg, self=self)
     if font:
       button = labels.Button(self.root, text=text, command=command, font=font)
     else:
@@ -409,15 +412,15 @@ def findWidgetSpans(guimap):
     rowswithnum = []
   return widgetspans
     
-def makePartial(func, partial, self=None, convertpartialarg = False):
+def makePartial(func, partialarg, self=None, convertpartialarg = False):
   """
   Makes a partial function out of an argument and command
   """
-  partial = processPartialArg(partial, self=self)
-  partialfunc = fts.partial(func, partial)
-  return partialfunc
+  partialarg = processPartialArg(partialarg, self=self)
+  partial = fts.partial(func, partialarg)
+  return partial
   
-def processPartialArg(partial, self=None, convertfromnum = False):
+def processPartialArg(partial, *args, self=None, convertfromnum=False):
   """
   Accounts for special cases where the partial argument needs to be modified to function as intended
   """

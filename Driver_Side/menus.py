@@ -68,6 +68,20 @@ def multiviewMenu(self):
             timeleft = 180
 
 def splitcamMenu(self):
+    timeleft = 180
+    while self.interface == "splitcam":
+        if timeleft < 0:
+            commands.updateStagedCams(self)
+            timeleft = self.timer.updateTime
+        else:
+            #TODO: Make this do something appropriate when the match ends
+            self.timer.reset()
+
+def onecamMenu(self):
+    while self.interface == "splitcam":
+        commands.updateStagedCams(self)
+
+def fourcamMenu(self):
     while self.interface == "splitcam":
         commands.updateStagedCams(self)
 
@@ -84,7 +98,8 @@ def testMenu(self):
 
 matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
                 "onecammatch": null, "multiview": multiviewMenu,   
-                "test": testMenu, "splitcam": splitcamMenu}
+                "test": testMenu, "splitcam": splitcamMenu,
+                "onecam": onecamMenu, "fourcam": fourcamMenu}
 
 #Ui Management Functions
 def switchUi(self, guiname):
