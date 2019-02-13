@@ -239,6 +239,7 @@ class TkWin:
     """
     Ungrids a widget and returns its location
     """
+    print(widget, self.gridded)
     location = widget.location
     widget.ungrid()
     self.gridded.remove(widget)

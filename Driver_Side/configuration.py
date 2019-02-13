@@ -104,7 +104,8 @@ def configureStacks(self, interface):
   commandfuncs = {"toggleBandwidth": commands.toggleBandwidth, "showFront": commands.frontCam, 
                   "showBack": commands.backCam, "showLeft": commands.leftCam, 
                   "showRight": commands.rightCam, "splitToMains": commands.splitToMains,
-                  "splitToSides": commands.splitToSides, "splitToAll": commands.splitToAll}
+                  "splitToSides": commands.splitToSides, "splitToAll": commands.splitToAll,
+                  "startMatch": commands.sendStartSignal}
   self.stacks = {}
   self.vars["namedwidgets"] = {}
   self.stacks["buttons"] = []

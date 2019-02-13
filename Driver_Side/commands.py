@@ -3,6 +3,7 @@
 
 import time
 import json
+import socket
 
 import visglobals
 import configuration as config
@@ -24,9 +25,6 @@ def swapOutCam(self, replacedcam, newcam):
     """
     row, column, columnspan, rowspan = replacedcam.ungrid()
     newcam.grid(row, column, columnspan, rowspan)
-
-def sendStartSignal(sock):
-    sock.sendto(b"i", piadr)
 
 def matchLoop(self, lastmatchcams, interface = "match"):
     """
@@ -57,7 +55,7 @@ def turnOffUngridedCams(self):
                 camera.updateCamOverNetwork()
 #Setup Commands
 entries = ["interface", "mainframes", "sideframes", "mainwidth", "mainheight", "sidewidth", "sideheight", "mainjpegquality", "sidejpegquality"]
-interfaces = {"Four Camera View": "fourcam", "Two Camera View (Swapable)": "twocam", "One Camera View (Swapable": "onecam"}
+interfaces = {"Four Camera View": "fourcam", "Two Camera View (Swapable)": "twocam", "One Camera View (Swapable)": "onecam"}
 
 #Multiview Commands
 mains = [0, 1]
@@ -433,7 +431,7 @@ def splitCamInTwo(self, cams, horizontal=True):
     else:
         self.vars["staged"].ungrid()
     if horizontal:
-        rows = defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2)
+        rows = defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2)+2
         columns = defaultlocation[1], defaultlocation[1]
         rowspans = int(defaultlocation[2]/2), int(defaultlocation[2]/2)
         columnspans = defaultlocation[3], defaultlocation[3]
@@ -444,7 +442,7 @@ def splitCamInTwo(self, cams, horizontal=True):
         columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
     for ind in range(2):
         self.gridWidget(self.cameras["match"][cams[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
-    self.vars["staged"] = [self.cameras["match"][cams[0]], self.vars["match"][cams[1]]]
+    self.vars["staged"] = [self.cameras["match"][cams[0]], self.cameras["match"][cams[1]]]
 
 def splitToMains(self):
     splitCamInTwo(self, cams=[0, 1])
@@ -453,13 +451,19 @@ def splitToSides(self):
     splitCamInTwo(self, cams=[2, 3])
 
 def splitCamInFour(self, order=[0,1,2,3]):
-    rows = defaultlocation[0], defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2), int((defaultlocation[2]-defaultlocation[0])/2)
-    columns = defaultlocation[1], int((defaultlocation[3]-defaultlocation[1])/2), defaultlocation[1], int((defaultlocation[3]-defaultlocation[1])/2)
-    rowspans = int(defaultlocation[2]/2), int(defaultlocation[2]/2)
-    columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
+    rows = (defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/4)+2, 
+            defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/4)+2)
+    columns = (defaultlocation[1], defaultlocation[1],
+            int((defaultlocation[3]-defaultlocation[1])/4)+2, int((defaultlocation[3]-defaultlocation[1])/4)+2)
+    rowspans = int(defaultlocation[2]/4), int(defaultlocation[2]/4), int(defaultlocation[2]/4), int(defaultlocation[2]/4)
+    columnspans = int(defaultlocation[3]/4), int(defaultlocation[3]/4), int(defaultlocation[3]/4), int(defaultlocation[3]/4)
     for ind in range(4):
+        print(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
         self.gridWidget(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
-    self.vars["staged"] = [self.cameras["match"][order[0]], self.vars["match"][order[1]], [self.cameras["match"][order[2]], self.vars["match"][order[3]]]]
+    self.vars["staged"] = [self.cameras["match"][order[0]], 
+                        self.cameras["match"][order[1]], 
+                        self.cameras["match"][order[2]], 
+                        self.cameras["match"][order[3]]]
 
 def splitToAll(self):
     splitCamInFour(self)
@@ -467,6 +471,7 @@ def splitToAll(self):
 def ungridStaged(self):
     if type(self.vars["staged"]) == list:
         for camera in self.vars["staged"]:
+            print(camera)
             self.ungridWidget(camera)
     else:
         self.ungridWidget(self.vars["staged"])
@@ -556,6 +561,12 @@ def increaseBandwidth(camera, main=True):
 def updateStagedCams(self):
     for cam in self.vars["staged"]:
         cam.updateImgOnLabel()
+
+def sendStartSignal(self):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(b"start", piadr)
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
 
 #Supplemetary functions to Commands
 def getActiveCams(numrange = 0, *args):

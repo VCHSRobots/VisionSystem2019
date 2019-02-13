@@ -1,4 +1,4 @@
-#ntpinet.py: Old version of pinet with networktables
+#ntpinet.py: Reappreciated version of pinet with networktables
 #11/17/2018 HP
 
 #Module Imports
@@ -30,7 +30,7 @@ robotip = "roborio-4415-frc.local"
 nt.initialize(robotip)
 table = nt.getTable("/vision")
 
-def setupServerSocket(socktype = UTP):
+def setupSenderSocket(socktype = UTP, timeout = .05):
   """
   Sets up and returns a ready to use socket bound to the ip and port arguments
   """
@@ -49,9 +49,11 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
   #Checks if size of image is bigger than the reciever buffer can handle
   if table:
     size = sys.getsizeof(frame)
-    if sys.getsizeof(frame) > table.getNumber("{0}maxsize".format(camnum), 50000):
-      table.putNumber("{0}maxsize".format(camnum), size)
-      sock.sendto(b"{0}overload".format(camnum), (ip, 5809)) #Warns client about NetworkTables update if about to send an image larger than the default buffer
+  elif sys.getsizeof(frame) > table.getNumber("{0}size".format(camnum), 50000):
+    defaultsize = table.getNumber("{0}size".format(camnum), 50000)
+    sizedif = size-defaultsize
+    table.putNumber("{0}overflow".format(camnum), sizedif) #Warns client about NetworkTables update if about to send an image larger than the default buffer
+    return #Skip sending frame until client confirms it can recieve the larger size
   return sock.sendto(frame, (ip, camnum+5800))
 
 def processImg(img, camvals):
@@ -162,19 +164,31 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
         sock.close()
         break
 
+def configMode(sock):
+  message = b""
+  while message != b"start":
+    #Scans for active cameras and posts them to NetworkTables
+    cams = scanForCams(numrange=(0,9))
+    for camnum in cams:
+      table.putBoolean("{0}isactive".format(camnum), True)
+      #exportImage(cams[camnum], camnum, sock = sock, table = table)
+    message = recvWithTimeout(sock)
+  return cams
+
+def recvWithTimeout(sock):
+  """
+  Recieves a message from the given socket and catches error if socket times out
+  """
+  try:
+    message = sock.recv(128)
+  except socket.error:
+      message = b""
+  return message
+
 def runMatch(time=180):
-  sock = setupServerSocket()
-  #Scans for active cameras and posts them to NetworkTables
-  cams = scanForCams(numrange=(0,9))
-  for camnum in cams:
-    table.putBoolean("{0}isactive".format(camnum), True)
-    #exportImage(cams[camnum], camnum, sock = sock, table = table)
-  #Opens bound socket and listens for start signal
-  listener = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-  listener.bind((piip, 5800))
-  listener.recv(1) #Listens for any byte
-  listener.shutdown(socket.SHUT_RDWR)
-  listener.close()
+  sock = setupSenderSocket()
+  #Runs in configuration mode until recieving start signal
+  cams = configMode(sock)
   #Exports vision system stream
   exportManagedStream(sock, cams, ip=ip, timeout=time)
   for camnum in cams:

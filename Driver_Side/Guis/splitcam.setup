@@ -2,4 +2,6 @@
             {"text": "Back", "command": "showBack"}, 
             {"text": "Left", "command": "showLeft"}, 
             {"text": "Right", "command": "showRight"}, 
-            {"text": "Split Mains", "command": "splitToMains"}]}
+            {"text": "Split Mains", "command": "splitToMains"},
+            {"text": "Split Sides", "command": "splitToSides"},
+            {"text": "Split All", "command": "splitToAll"}]}
