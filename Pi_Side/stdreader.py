@@ -47,8 +47,8 @@ Bus 001 Device 002: ID 0424:2514 Standard Microsystems Corp. USB 2.0 Hub
 Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub"""
 
 def scanForCameras():
-  tree = ttree #getStdOutput(script="getusbs").decode()
-  manufacts = tmanus #getStdOutput(script="getmans").decode()
+  tree = getStdOutput(script="getusbs").decode()
+  manufacts = getStdOutput(script="getmans").decode()
   cams = []
   for camnum in range(4):
     if scanForCam(camnum, tree, manufacts):
