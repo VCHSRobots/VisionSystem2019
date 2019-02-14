@@ -24,9 +24,31 @@ def getStdOutput(script):
   output = process.stdout.read()
   return output
 
+ttree = """/:  Bus 01.Port 1: Dev 1, Class=root_hub, Driver=dwc_otg/1p, 480M
+    |__ Port 1: Dev 2, If 0, Class=Hub, Driver=hub/4p, 480M
+        |__ Port 1: Dev 3, If 0, Class=Hub, Driver=hub/3p, 480M
+            |__ Port 1: Dev 7, If 0, Class=Vendor Specific Class, Driver=lan78xx, 480M
+            |__ Port 2: Dev 5, If 0, Class=Video, Driver=uvcvideo, 480M
+            |__ Port 2: Dev 5, If 1, Class=Video, Driver=uvcvideo, 480M
+            |__ Port 2: Dev 5, If 2, Class=Audio, Driver=snd-usb-audio, 480M
+            |__ Port 2: Dev 5, If 3, Class=Audio, Driver=snd-usb-audio, 480M
+            |__ Port 3: Dev 6, If 0, Class=Video, Driver=uvcvideo, 480M
+            |__ Port 3: Dev 6, If 3, Class=Audio, Driver=snd-usb-audio, 480M
+            |__ Port 3: Dev 6, If 1, Class=Video, Driver=uvcvideo, 480M
+            |__ Port 3: Dev 6, If 2, Class=Audio, Driver=snd-usb-audio, 480M
+        |__ Port 2: Dev 4, If 0, Class=Human Interface Device, Driver=usbhid, 1.5M"""
+
+tmanus = """Bus 001 Device 004: ID 046d:c05a Logitech, Inc. M90/M100 Optical Mouse
+Bus 001 Device 006: ID 045e:0779 Microsoft Corp. LifeCam HD-3000
+Bus 001 Device 005: ID 045e:0779 Microsoft Corp. LifeCam HD-3000
+Bus 001 Device 007: ID 0424:7800 Standard Microsystems Corp.
+Bus 001 Device 003: ID 0424:2514 Standard Microsystems Corp. USB 2.0 Hub
+Bus 001 Device 002: ID 0424:2514 Standard Microsystems Corp. USB 2.0 Hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub"""
+
 def scanForCameras():
-  tree = getStdOutput(script="getusbs").decode()
-  manufacts = getStdOutput(script="getmans").decode()
+  tree = ttree #getStdOutput(script="getusbs").decode()
+  manufacts = tmanus #getStdOutput(script="getmans").decode()
   cams = []
   for camnum in range(4):
     if scanForCam(camnum, tree, manufacts):
@@ -46,7 +68,8 @@ def scanForCam(cam, tree, manufacts):
     return False
 
 def getDeviceManufacturer(dnum, manufacts):
-  deviceid = "Device {:03}".format(dnum)
+  manufact = ""
+  deviceid = "Device {:03}".format(int(dnum))
   for line in manufacts.splitlines():
     if deviceid in line:
       manufact = line.split()[5][:4]
@@ -64,13 +87,13 @@ def findDeviceInCamPort(cam, tree):
     initsearch = "{} Port 3".format(getPrefix(indents=2))
   elif cam == 3:
     initsearch = "{} Port 2".format(getPrefix(indents=2))
-  for line in enumerate(tree):
+  for line in tree:
     #Checks if a device is plugged into the port
     if initsearch == line[:len(initsearch)]:
-      dnum = line.split()[4]
+      dnum = line.split()[4][:-1]
       #Checks if the device is a camera with proper specs
       if (not "Class=Video" in line and not "Class=Audio" in line) or (not "480M" in line):
-        return False
+        return -1
   return dnum
 
 def getPrefix(indents):
