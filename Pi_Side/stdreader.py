@@ -54,7 +54,8 @@ def getDeviceManufacturer(dnum, manufacts):
       break
   return manufact
 
-def findDeviceInCamPort(cam, tree);
+def findDeviceInCamPort(cam, tree):
+  foundind = False
   #Checks for a device in the appropriate port
   if cam == 0:
     initsearch = "{} Port 2".format(getPrefix(indents=3))
@@ -64,13 +65,14 @@ def findDeviceInCamPort(cam, tree);
     initsearch = "{} Port 3".format(getPrefix(indents=2))
   elif cam == 3:
     initsearch = "{} Port 2".format(getPrefix(indents=2))
-  for ind, line in enumerate(tree):
+  for line in enumerate(tree):
     #Checks if a device is plugged into the port
     if initsearch == line[:len(initsearch)]:
       foundind = True
       #Checks if the device is a camera with proper specs
       if (not "Class=Video" in line and not "Class=Audio" in line) or (not "480M" in line):
         return False
+  return foundind
 
 def getPrefix(indents):
   """
