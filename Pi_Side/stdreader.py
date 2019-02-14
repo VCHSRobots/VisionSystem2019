@@ -35,7 +35,6 @@ def scanForCameras():
 
 def scanForCam(cam, tree, manufacts):
   tree = tree.splitlines()
-  foundind = -1
   #Device number
   dnum = findDeviceInCamPort(cam, tree)
   if dnum == -1:
@@ -48,14 +47,14 @@ def scanForCam(cam, tree, manufacts):
 
 def getDeviceManufacturer(dnum, manufacts):
   deviceid = "Device {:03}".format(dnum)
-  for line in manufacts.splitlines:
+  for line in manufacts.splitlines():
     if deviceid in line:
       manufact = line.split()[5][:4]
       break
   return manufact
 
 def findDeviceInCamPort(cam, tree):
-  foundind = False
+  dnum = -1
   #Checks for a device in the appropriate port
   if cam == 0:
     initsearch = "{} Port 2".format(getPrefix(indents=3))
@@ -68,11 +67,11 @@ def findDeviceInCamPort(cam, tree):
   for line in enumerate(tree):
     #Checks if a device is plugged into the port
     if initsearch == line[:len(initsearch)]:
-      foundind = True
+      dnum = line.split()[4]
       #Checks if the device is a camera with proper specs
       if (not "Class=Video" in line and not "Class=Audio" in line) or (not "480M" in line):
         return False
-  return foundind
+  return dnum
 
 def getPrefix(indents):
   """
