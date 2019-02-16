@@ -57,12 +57,14 @@ class TkWin:
     self.initMenuSystem()
     self.interface = "mainmenu"
     self.timer = timer.Timer()
+    self.camerasconfiged = False
 
   def runWin(self):
     """
     Initiates the tkinter window while running the instance's set thread function
     """
-    self.thread.run(self)
+    print(self)
+    self.thread.start()
     self.root.mainloop()
 
   def setThread(self, func):
@@ -81,20 +83,16 @@ class TkWin:
     self.root.config(menu=self.toplevel)
 
   #Widget Functions
-  def addCamera(self, camnum, interface="mainmenu", rewidget=False):
+  def addCamera(self, camnum, interface="match", rewidget=False):
     """
     Adds a listener for a remote camera at a specified camnum socket
     Tries to reconnect with the FailedCamera widget if it cannot connect at first
     """
     if interface not in self.cameras:
       self.cameras[interface] = []
-    if visiontable.getBoolean("{}isactive".format(camnum), False):
-      camera = labels.Camera(camnum, self.root)
-    else:
-      ind = len(self.cameras[interface]) #The index the placeholder camera will go in for
-      camera = labels.FailedCamera(camnum, self.root, self, interface, ind)
+    ind = len(self.cameras[interface]) #Camera index to swap in case of failure
+    camera = labels.Camera(camnum, self.root, self, interface, ind)
     self.cameras[interface].append(camera)
-    print(self.cameras)
     if rewidget:
       return camera
 
@@ -239,7 +237,6 @@ class TkWin:
     """
     Ungrids a widget and returns its location
     """
-    print(widget, self.gridded)
     location = widget.location
     widget.ungrid()
     self.gridded.remove(widget)
@@ -278,8 +275,6 @@ class TkWin:
     would place the first camera the window recognizes on column 2 row 1 with a columnspan of 3 and rowspan of 3
     Only uses the first two items in the given guimap
     """
-    print(self.cameras)
-    print(guiname)
     guimap = guimaps[guiname]
     widgetspans = findWidgetSpans(guimap)
     for num in guimap[1]:
@@ -290,7 +285,6 @@ class TkWin:
       row = widgetspans[num][2]
       columnspan = widgetspans[num][1]-widgetspans[num][0]+1
       rowspan = widgetspans[num][3]-widgetspans[num][2]+1
-      print(column, row, columnspan, rowspan)
       self.gridWidget(widget, column=column, row=row, columnspan=columnspan, rowspan=rowspan)
   
   def getWidgetFromName(self, widgetname, guiname):
@@ -345,8 +339,7 @@ class TkWin:
     self.tearDown()
     #Configures window for the new gui
     config.configfunctions[guiname](self)
-    #Grids gui widgets
-    print(guiname)
+    #Grids gui widgets)
     self.processGuiMap(guiname)
     #If a gui file references stack rules, use those stack rules to grid widgets in self.stacks
     if "stackrules" in guimaps[guiname][2]:
@@ -358,7 +351,6 @@ class TkWin:
     Clears the window of all the widgets in the gridded registry
     If widgets are added to the window indirectly, this will not work.
     """
-    print(self.gridded)
     for widget in self.gridded:
         widget.ungrid()
     self.gridded.clear()
@@ -377,7 +369,6 @@ def splitWidgetName(widgetname):
   """
   Splits a widget's gui file name into the widget's type and number
   """
-  print(widgetname)
   #Seperates widget's end tag from its type indicator
   num = int(re.sub(r"[a-zA-Z]", "", widgetname))
   widgettype = re.sub(r"[0-9]", "", widgetname)
@@ -387,7 +378,6 @@ def isValidWidget(widgettype):
   """
   Determines if the given string will be recognized as a widget type
   """
-  print(widgettypes)
   if widgettype in widgettypes:
     return True
   else:

@@ -7,7 +7,7 @@ import socket
 
 import visglobals
 import configuration as config
-from visglobals import comsock, piadr, visiontable
+from visglobals import comsock, piadr, visiontable, competitioninterface
 
 camnames = {0: "Front", 1: "Rear", 2: "Left", 3: "Right"}
 
@@ -17,7 +17,7 @@ def startMatch(self):
     Sends the Vision System start siginal for a competition match
     """
     sendStartSignal(comsock)
-    comsock.close()
+    self.switchUi(competitioninterface)
 
 def swapOutCam(self, replacedcam, newcam):
     """
@@ -162,45 +162,37 @@ def stagedCamHierarchies(self):
 
 def stageFrontCam(self):
     #The staged (active) camera objects
-    self.vars["staged"] = self.cameras["multiview"][0]
-    #List of the indices of staged cameras
-    self.vars["isstaged"] = [0]
+    self.vars["staged"] = [0]
     resetToggles(self, 0)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageBackCam(self):
-    self.vars["staged"] = self.cameras["multiview"][1]
-    self.vars["isstaged"] = [1]
+    self.vars["staged"] = [1]
     resetToggles(self, 1)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageLeftCam(self):
-    self.vars["staged"] = self.cameras["multiview"][2]
-    self.vars["isstaged"] = [2]
+    self.vars["staged"] = [2]
     resetToggles(self, 2)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageRightCam(self):
-    self.vars["staged"] = self.cameras["multiview"][3]
-    self.vars["isstaged"] = [3]
+    self.vars["staged"] = [3]
     resetToggles(self, 3)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageAllCams(self):
-    self.vars["staged"] = self.cameras["multiview"]
-    self.vars["isstaged"] = [0, 1, 2 ,3]
+    self.vars["staged"] = [0, 1, 2 ,3]
     resetToggles(self, "all")
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageMainCams(self):
-    self.vars["staged"] = self.cameras["multiview"][:2]
-    self.vars["isstaged"] = [0, 1]
+    self.vars["staged"] = [0, 1]
     resetToggles(self, "main")
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageSubCams(self):
-    self.vars["staged"] = self.cameras["multiview"][2:]
-    self.vars["isstaged"] = [2, 3]
+    self.vars["staged"] = [2, 3]
     resetToggles(self, "sub")
     putToDash(self, "staged", self.vars["isstaged"])
 
@@ -221,19 +213,13 @@ def toggleActivity(self):
 
 
 def activateStaged(self):
-    if type(self.vars["staged"]) == list:
-        for camera in self.vars["staged"]:
-            activate(camera)
-    else:
-        camera = self.vars["staged"]
+    staged = getStagedCams(self)
+    for camera in staged:
         activate(camera)
 
 def deactivateStaged(self):
-    if type(self.vars["staged"]) == list:
-        for camera in self.vars["staged"]:
-            deactivate(camera)
-    else:
-        camera = self.vars["staged"]
+    staged = getStagedCams(self)
+    for camera in staged:
         deactivate(camera)
 
 def activate(camera):
@@ -264,23 +250,16 @@ def updateToFramerate(self):
     """
     Updates all cameras to the class framerate preset
     """
+    staged = getStagedCams(self)
     preset = self.vars["framerate"]
-    if type(self.vars["staged"]) == list:
-        for ind, camera in enumerate(self.vars["staged"]):
-            if self.vars["isstaged"][ind] in mains:
-                updateCamToFramerate(camera, preset, main=True)
-            elif self.vars["isstaged"][ind] in sides:
-                updateCamToFramerate(camera, preset, main=False)
-            else:
-                raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][ind]))
-    else:
-        camera = self.vars["staged"]
-        if self.vars["isstaged"][0] in mains:
+    for ind in self.vars["staged"]:
+        camera = staged[ind]
+        if ind in mains:
             updateCamToFramerate(camera, preset, main=True)
-        elif self.vars["isstaged"][0] in sides:
+        elif ind in sides:
             updateCamToFramerate(camera, preset, main=False)
         else:
-            raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][0]))
+            raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][ind]))
 
 def updateCamToFramerate(camera, preset, main = True):
     """
@@ -313,23 +292,16 @@ def updateToQuality(self):
     """
     Updates all cameras the class quality preset
     """
-    preset = self.vars["framerate"]
-    if type(self.vars["staged"]) == list:
-        for ind, camera in enumerate(self.vars["staged"]):
-            if self.vars["isstaged"][ind] in mains:
-                updateCamToQuality(camera, preset, main=True)
-            elif self.vars["isstaged"][ind] in sides:
-                updateCamToQuality(camera, preset, main=False)
-            else:
-                raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][ind]))
-    else:
-        camera = self.vars["staged"]
-        if self.vars["isstaged"][0] in mains:
+    staged = getStagedCams(self)
+    preset = self.vars["quality"]
+    for ind in self.vars["staged"]:
+        camera = staged[ind]
+        if ind in mains:
             updateCamToQuality(camera, preset, main=True)
-        elif self.vars["isstaged"][0] in sides:
+        elif ind in sides:
             updateCamToQuality(camera, preset, main=False)
         else:
-            raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][0]))
+            raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][ind]))
 
 def updateCamToQuality(camera, preset, main = True):
     """
@@ -347,12 +319,9 @@ def toggleColor(self):
     """
     Toggles the entire class's color from/to color
     """
+    staged = getStagedCams(self)
     self.vars["color"] = not self.vars["color"]
-    if type(self.vars["staged"]) == list:
-        for camera in self.vars["staged"]:
-            setCamColor(camera, self.vars["color"])
-    else:
-        camera = self.vars["staged"]
+    for camera in staged:
         setCamColor(camera, self.vars["color"])
     putToDash(self, "color", self.vars["color"])
 
@@ -362,7 +331,6 @@ def setCamColor(camera, color):
     """
     camera.color = color
     camera.updateOverNetwork()
-    
 
 def resetActivity(self, staged):
     if staged == "all":
@@ -419,17 +387,8 @@ def resetColor(self, staged):
 #Splitcam functions
 defaultlocation = (1, 1, 16, 16)
 
-def stageOneCam(self, camnum):
-    camera = self.cameras["match"][camnum]
-    self.replace(self.vars["staged"], camera)
-    self.vars["staged"] = camera
-
 def splitCamInTwo(self, cams, horizontal=True):
-    if type(self.vars["staged"]) == list:
-        for camera in self.vars["staged"]:
-            camera.ungrid()
-    else:
-        self.vars["staged"].ungrid()
+    ungridStaged(self)
     if horizontal:
         rows = defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/2)+2
         columns = defaultlocation[1], defaultlocation[1]
@@ -442,7 +401,7 @@ def splitCamInTwo(self, cams, horizontal=True):
         columnspans = int(defaultlocation[3]/2), int(defaultlocation[3]/2)
     for ind in range(2):
         self.gridWidget(self.cameras["match"][cams[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
-    self.vars["staged"] = [self.cameras["match"][cams[0]], self.cameras["match"][cams[1]]]
+    self.vars["staged"] = cams
 
 def splitToMains(self):
     splitCamInTwo(self, cams=[0, 1])
@@ -451,6 +410,7 @@ def splitToSides(self):
     splitCamInTwo(self, cams=[2, 3])
 
 def splitCamInFour(self, order=[0,1,2,3]):
+    ungridStaged(self)
     rows = (defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/4)+2, 
             defaultlocation[0], int((defaultlocation[2]-defaultlocation[0])/4)+2)
     columns = (defaultlocation[1], defaultlocation[1],
@@ -460,33 +420,22 @@ def splitCamInFour(self, order=[0,1,2,3]):
     for ind in range(4):
         print(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
         self.gridWidget(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
-    self.vars["staged"] = [self.cameras["match"][order[0]], 
-                        self.cameras["match"][order[1]], 
-                        self.cameras["match"][order[2]], 
-                        self.cameras["match"][order[3]]]
+    self.vars["staged"] = order
 
 def splitToAll(self):
     splitCamInFour(self)
 
 def ungridStaged(self):
-    if type(self.vars["staged"]) == list:
-        for camera in self.vars["staged"]:
-            print(camera)
-            self.ungridWidget(camera)
-    else:
-        self.ungridWidget(self.vars["staged"])
+    staged = getStagedCams(self)
+    for camera in staged:
+        self.ungridWidget(camera)
 
 #Onecam functions
 def switchCam(self, camnum):
     ungridStaged(self)
     camera = self.cameras["match"][camnum]
     self.gridWidget(camera, defaultlocation[0], defaultlocation[1], defaultlocation[2], defaultlocation[3])
-    self.vars["staged"] = camera
-
-def switchOneCam(self, camnum):
-    camera = self.cameras["match"][camnum]
-    self.replaceWidget(self.vars["staged"], camera)
-    self.vars["staged"] = camera
+    self.vars["staged"] = [camnum]
 
 def frontCam(self):
     switchCam(self, 0)
@@ -511,25 +460,17 @@ def toggleBandwidth(self):
         self.vars["namedwidgets"]["toggleBandwidth"].setText("Return To Normalcy!")
 
 def normalBandwidthMode(self):
-    if type(self.vars["staged"]) == list:
-        for ind in self.vars["isstaged"]:
-            camera = self.cameras["match"][ind]
-            main = ind in mains
-            increaseBandwidth(camera, main)
-    else:
-        main = self.vars["isstaged"][0] in mains
-        increaseBandwidth(self.vars["staged"], main)
+    staged = getStagedCams(self)
+    for camera in staged:
+        main = camera in mains
+        increaseBandwidth(camera, main)
     self.vars["bandwidthreduced"] = False
 
 def lowBandwidthMode(self):
-    if type(self.vars["staged"]) == list:
-        for ind in self.vars["isstaged"]:
-            camera = self.cameras["match"][ind]
-            main = ind in mains
-            reduceBandwidth(camera, main)
-    else:
-        main = self.vars["isstaged"][0] in mains
-        reduceBandwidth(self.vars["staged"], main)
+    staged = getStagedCams(self)
+    for camera in staged:
+        main = camera in mains
+        reduceBandwidth(camera, main)
     self.vars["bandwidthreduced"] = True
 
 def reduceBandwidth(camera, main=True):
@@ -559,7 +500,8 @@ def increaseBandwidth(camera, main=True):
     camera.updateOverNetwork()
 
 def updateStagedCams(self):
-    for cam in self.vars["staged"]:
+    staged = getStagedCams(self)
+    for cam in staged:
         cam.updateImgOnLabel()
 
 def sendStartSignal(self):
@@ -567,6 +509,12 @@ def sendStartSignal(self):
     sock.sendto(b"start", piadr)
     sock.shutdown(socket.SHUT_RDWR)
     sock.close()
+
+def getStagedCams(self):
+    staged = []
+    for num in self.vars["staged"]:
+        staged.append(self.cameras["match"][num])
+    return staged
 
 #Supplemetary functions to Commands
 def getActiveCams(numrange = 0, *args):

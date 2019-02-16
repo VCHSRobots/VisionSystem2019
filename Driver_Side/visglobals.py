@@ -33,11 +33,10 @@ def null():
   pass
 
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
-ip = "10.44.15.41"
+ip = "10.44.15.5"
 piip = "10.44.15.6"
-piadr = (piip, 5809)
-myadr = (ip, 5809)
-internadr = (ip, 5810)
+piadr = (piip, 5800)
+myadr = (ip, 5800)
 #Global communications socket
 comsock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 #List of valid widget types
