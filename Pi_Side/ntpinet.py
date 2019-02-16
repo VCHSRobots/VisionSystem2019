@@ -21,7 +21,7 @@ UTP = socket.SOCK_DGRAM
 RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
-ip = "10.44.15.41"
+cliip = "10.44.15.5"
 piip = "10.44.15.6"
 myadr = (piip, 5800)
 dwidth = 400
@@ -39,12 +39,13 @@ def setupSenderSocket(socktype = UTP, timeout = .05):
   """
   sock = socket.socket(socket.AF_INET, socktype)
   sock.bind(myadr)
+  sock.settimeout(.05)
   #Not Complete Yet
   #if socktype == TCP:
   #   sock.listen()
   return sock
 
-def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
+def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
   """
   Reads, sterilizes, and exports an image from the OpenCV camera
   """
@@ -53,14 +54,12 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, table=None):
     return -1
   frame = processImg(frame, camvals)
   #Checks if size of image is bigger than the reciever buffer can handle
-  if table:
-    size = sys.getsizeof(frame)
-  elif sys.getsizeof(frame) > table.getNumber("{0}size".format(camnum), 50000):
+  if sys.getsizeof(frame) > table.getNumber("{0}size".format(camnum), 50000):
     defaultsize = table.getNumber("{0}size".format(camnum), 50000)
     sizedif = size-defaultsize
     table.putNumber("{0}overflow".format(camnum), sizedif) #Warns client about NetworkTables update if about to send an image larger than the default buffer
     return #Skip sending frame until client confirms it can recieve the larger size
-  return sock.sendto(frame, (ip, camnum+5800))
+  return sendWithTimeout(sock, frame, (cliip, camnum+5800))
 
 def processImg(img, camvals):
   """
@@ -131,7 +130,7 @@ def pollTableVals(camnum, keys):
       vals[key] = table.getBoolean("{0}{1}".format(camnum, key), keys[key])
   return vals
 
-def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
+def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
   """
   Exports a stream of images with each camera individually managed by its NetworkTables values
   """
@@ -143,17 +142,19 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
   framesent = 0
   totalsize = 0
   while True:
-    for num in cams:
+    for ind, num in enumerate(cams):
       camvals = pollCamVars(num)
       #Casts certain numerical camera values to integer
       for key in intvals:
         camvals[key] = int(camvals[key])
-      timerecords[num][1] += time.perf_counter()-timerecords[num][0] #Compares current time to time since the last time update to see how much time has passed
-      timerecords[num][0] = time.perf_counter()
-      if camvals["isactive"] and timerecords[num][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
-        size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals)
+      timerecords[ind][1] += time.perf_counter()-timerecords[ind][0] #Compares current time to time since the last time update to see how much time has passed
+      timerecords[ind][0] = time.perf_counter()
+      if camvals["isactive"] and timerecords[ind][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
+        size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals, ip=ip)
+        if size == -1:
+            continue
         totalsize += size
-        timerecords[num][1] = 0
+        timerecords[ind][1] = 0
         framesent += 1
       if time.perf_counter()-lastimesincediag >= 10:
         bytespersec = totalsize/10
@@ -162,7 +163,7 @@ def exportManagedStream(sock, cams, ip = ip, numrange = (0, 10), socktype = UTP,
         framesent = 0
         totalsize = 0
         lastimesincediag = time.perf_counter()
-    if cv2.waitKey(1) == 0:
+    if cv2.waitKey(20) == 0:
       break
     if timeout:
       if time.perf_counter()-starttime > timeout:
@@ -184,18 +185,22 @@ def exportTestStream(sock, cams):
 def configMode(sock):
   message = b""
   camdict = {}
-  camind = 0
+  caminds = {}
+  indsused = 0
   while message != b"start":
     #Scans for active cameras and posts them to NetworkTables
     cams = stdreader.scanForCameras()
     badcams = exportTestStream(sock, camdict)
-    for badcam in badcams:
-      cams.pop(badcam)
     for camnum in cams:
       table.putBoolean("{0}isactive".format(camnum), True)
-      if not camnum in camdict:
-        camdict[camnum] = cv2.VideoCapture(camind)
-        camind += 1
+      if (not camnum in camdict):
+        camdict[camnum] = cv2.VideoCapture(indsused)
+        indsused += 1
+    print(camdict, indsused)
+    for badcam in badcams:
+      cam = camdict.pop(badcam)
+      cam.release()
+      indsused -= 1
     message = recvWithTimeout(sock)
   return camdict
 
@@ -207,16 +212,26 @@ def recvWithTimeout(sock):
     message = sock.recv(128)
   except socket.error:
       message = b""
+      print("loop passed")
   return message
+
+def sendWithTimeout(sock, msg, adr):
+    try:
+        return sock.sendto(msg, adr)
+    except socket.timeout:
+        retrun -1
 
 def runMatch(time=180):
   sock = setupSenderSocket()
   #Runs in configuration mode until recieving start signal
-  cams = configMode(sock)
-  #Exports vision system stream
-  exportManagedStream(sock, cams, ip=ip, timeout=time)
-  for camnum in cams:
-    cams[camnum].release()
+  try:
+    cams = configMode(sock)
+    #Exports vision system stream
+    exportManagedStream(sock, cams, ip=cliip, timeout=time)
+  finally:
+    sock.close()
+    for camnum in cams:
+      cams[camnum].release()
 
 def test(time=180):
   """
@@ -235,3 +250,6 @@ def test(time=180):
   finally:
     for camnum in cams:
       cams[camnum].release()
+
+if __name__ == "__main__":
+    runMatch()
