@@ -56,7 +56,7 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
   #Checks if size of image is bigger than the reciever buffer can handle
   if sys.getsizeof(frame) > table.getNumber("{0}size".format(camnum), 50000):
     defaultsize = table.getNumber("{0}size".format(camnum), 50000)
-    sizedif = size-defaultsize
+    sizedif = sys.getsizeof(frame)-defaultsize
     table.putNumber("{0}overflow".format(camnum), sizedif) #Warns client about NetworkTables update if about to send an image larger than the default buffer
     return #Skip sending frame until client confirms it can recieve the larger size
   return sendWithTimeout(sock, frame, (cliip, camnum+5800))
@@ -185,8 +185,7 @@ def exportTestStream(sock, cams):
 def configMode(sock):
   message = b""
   camdict = {}
-  caminds = {}
-  currentind = 0
+  indsused = 0
   while message != b"start":
     #Scans for active cameras and posts them to NetworkTables
     cams = stdreader.scanForCameras()
@@ -219,7 +218,7 @@ def sendWithTimeout(sock, msg, adr):
     try:
         return sock.sendto(msg, adr)
     except socket.timeout:
-        retrun -1
+        return -1
 
 def runMatch(time=180):
   sock = setupSenderSocket()
