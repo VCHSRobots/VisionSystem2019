@@ -10,30 +10,36 @@ import cv2
 import io
 import sys
 import numpy as np
+from threads import VideoThread
 from PIL import Image
+from queue import Queue
 from networktables import NetworkTables as nt
 
 import stdreader
 
 #Globals
 TCP = socket.SOCK_STREAM
-UTP = socket.SOCK_DGRAM
+UDP = socket.SOCK_DGRAM
 RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 cliip = "10.44.15.5"
 piip = "10.44.15.6"
 myadr = (piip, 5800)
+cam_queue_size = 500000
+message_queue_size = 100
+message_options = ["dead", "stop"]
 dwidth = 400
 dheight = 400
 defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
+default_match_time = 180
 #Camera value keys which need to be cast to integers
 intvals = ["width", "height", "compression", "quality"]
 robotip = "roborio-4415-frc.local"
 nt.initialize(robotip)
 table = nt.getTable("/vision")
 
-def setupSenderSocket(socktype = UTP, timeout = .05):
+def setupSenderSocket(socktype = UDP, timeout = .05):
   """
   Sets up and returns a ready to use socket bound to the ip and port arguments
   """
@@ -62,9 +68,11 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
   return sendWithTimeout(sock, frame, (cliip, camnum+5800))
 
 def exportImageFromQueue(sock, queue, camnum):
-  img = queue.get()
-  if img != b"":
-    sock.sendTo(img, (cliip, 5800+camnum))
+  img = readQueueWithTimeout(queue)
+  if img in message_options:
+    return sock.sendTo(img, (cliip, 5800+camnum))
+  else:
+    return -1
   
 def readQueueWithTimeout(queue, timeout = .05):
   try:
@@ -107,8 +115,15 @@ def makeCam(camnum):
   else:
     return False
 
-def makeThreadCam(camnum):
-  thread = threads.videoThread
+def makeThreadCam(camnum, camind):
+  """
+  Makes a camera-managing thread
+  Returns the thread along with the assocated queue
+  """
+  camqueue = Queue(cam_queue_size)
+  msgqueue = Queue(message_queue_size)
+  thread = VideoThread(camnum=camnum, camind=camind, camqueue=camqueue, msgqueue=msgqueue, threadID=camnum)
+  return thread, camqueue, msgqueue
   
 def findCam(numrange = (0, 100)):
   """
@@ -157,7 +172,7 @@ def pollTableVals(camnum, keys):
       vals[key] = table.getBoolean("{0}{1}".format(camnum, key), keys[key])
   return vals
 
-def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = UTP, port = 1024, timeout = 0):
+def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = UDP, port = 1024, timeout = 0):
   """
   Exports a stream of images with each camera individually managed by its NetworkTables values
   """
@@ -196,6 +211,36 @@ def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = U
       if time.perf_counter()-starttime > timeout:
         break
 
+def exportThreadStream(sock, camqueues, msgqueues, timeout = default_match_time, socktype = UDP):
+  #Queues should be {camnum: queue} pairs
+  messages = {}
+  totalsize = {}
+  framessent = {}
+  starttime = time.perf_counter()
+  while time.perf_counter()-starttime > 0:
+    for camnum in camqueues:
+      size = exportImageFromQueue(sock, camqueues[camnum], camnum)
+      messages[camnum] = readQueueWithTimeout(msgqueues[camnum])
+      totalsize[camnum] += size
+      framessent[camnum] += 1
+    if time.perf_counter()-lastimesincediag >= 10:
+        bytespersec = totalsize[camnum]/10
+        fps = framessent[camnum]/10
+        print("{0} frames sent at {1}fps. Average image size: {2}".format(framessent, fps, bytespersec*8/1000000))
+        framessent[camnum] = 0
+        totalsize[camnum] = 0
+        lastimesincediag = time.perf_counter()
+    #processMessages()
+    messages = {}
+
+def exportTestThreadStream(sock, camqueues, socktype = UDP):
+  """
+  Exports one image from each threaded camera
+  """
+  #Queues should be {camnum: queue} pairs
+  for camnum in camqueues:
+    size = exportImageFromQueue(sock, camqueues[camnum], camnum)
+
 def exportTestStream(sock, cams):
   """
   Exports a single image from each camera in the test stream
@@ -208,6 +253,14 @@ def exportTestStream(sock, cams):
     if exportImage(cams[num], camnum=num, sock=sock, camvals=camvals) == -1:
       badcams.append(num)
   return badcams
+
+def getQueueMessages(msgqueues):
+  messages = {}
+  for camnum in msgqueues:
+    message = readQueueWithTimeout(msgqueues[camnum])
+    if message != b"":
+      messages[camnum] = message
+  return messages
 
 def configMode(sock):
   message = b""
@@ -230,6 +283,35 @@ def configMode(sock):
     message = recvWithTimeout(sock)
   return camdict
 
+def configWithThreads(sock):
+  sockmessage = b""
+  camqdict = {}
+  msgqdict = {}
+  messages = {}
+  indsused = 0
+  while sockmessage != b"start":
+    #Scans for active cameras and posts them to NetworkTables
+    cams = stdreader.scanForCameras()
+    for camnum in cams:
+      table.putBoolean("{}isactive".format(camnum), True)
+      if camnum not in camqdict:
+        thread, camqueue, msgqueue = makeThreadCam(camnum, indsused)
+        thread.start()
+        camqdict[camnum] = camqueue
+        msgqdict[camnum] = msgqueue
+        indsused += 1
+    sockmessage = recvWithTimeout(sock)
+    exportTestThreadStream(sock, camqdict)
+    messages = getQueueMessages(msgqdict)
+    for camnum in messages:
+      message = messages[camnum]
+      if message == b"dead":
+        camqdict.pop(camnum)
+        msgqdict.pop(camnum)
+        indsused -= 1
+    messages = {}
+  return camqdict, msgqdict
+  
 def recvWithTimeout(sock):
   """
   Recieves a message from the given socket and catches error if socket times out
@@ -247,7 +329,7 @@ def sendWithTimeout(sock, msg, adr):
     except socket.timeout:
         return -1
 
-def runMatch(time=180):
+def runMatch(time = 180):
   sock = setupSenderSocket()
   #Runs in configuration mode until recieving start signal
   try:
@@ -258,6 +340,21 @@ def runMatch(time=180):
     sock.close()
     for camnum in cams:
       cams[camnum].release()
+
+def runThreadMatch(time = 180):
+  #Whether the stop message has been sent to the thread in case of error
+  lastmsgsent = False
+  sock = setupSenderSocket()
+  try:
+    camqueues, msgqueues = configWithThreads(sock)
+    exportThreadStream(sock, camqueues, msgqueues, timeout=time)
+  finally:
+    sock.close()
+    for camnum in msgqueues:
+      lastmsgsent = False
+      while not lastmsgsent:
+        lastmsgsent = writeToQueue(msgqueues[camnum], b"stop")
+      lastmsgsent = False
 
 def test(time=180):
   """
