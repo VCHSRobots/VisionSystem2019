@@ -61,6 +61,28 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
     return #Skip sending frame until client confirms it can recieve the larger size
   return sendWithTimeout(sock, frame, (cliip, camnum+5800))
 
+def exportImageFromQueue(sock, queue, camnum):
+  img = queue.get()
+  if img != b"":
+    sock.sendTo(img, (cliip, 5800+camnum))
+  
+def readQueueWithTimeout(queue, timeout = .05):
+  try:
+    item = queue.get(timeout=timeout)
+    return item
+  except queue.Empty:
+    return b""
+  
+def writeToQueue(queue, item, timeout = .05):
+  if not queue.full():
+    try:
+      queue.put(item, timeout=timeout)
+      return True
+    except queue.Full:
+      return False
+  else:
+    return False
+    
 def processImg(img, camvals):
   """
   Processes an image from numpy array format to jpeg bytes blob
@@ -85,6 +107,9 @@ def makeCam(camnum):
   else:
     return False
 
+def makeThreadCam(camnum):
+  thread = threads.videoThread
+  
 def findCam(numrange = (0, 100)):
   """
   Scans through numbers within numrange and returns the first unexcluded camera
@@ -117,6 +142,8 @@ def pollCamVars(camnum):
     vals["color"] = GRAY
   else:
     vals["color"] = RGB
+  for key in intvals:
+    vals[key] = int(vals[key])
   return vals
 
 def pollTableVals(camnum, keys):
