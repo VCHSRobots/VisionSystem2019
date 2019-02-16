@@ -68,11 +68,12 @@ def multiviewMenu(self):
             timeleft = 180
 
 def splitcamMenu(self):
+    print("here")
     timeleft = 180
     while self.interface == "splitcam":
-        if timeleft < 0:
+        if timeleft > 0:
             commands.updateStagedCams(self)
-            timeleft = self.timer.updateTime
+            timeleft = self.timer.updateTime()
         else:
             #TODO: Make this do something appropriate when the match ends
             self.timer.reset()

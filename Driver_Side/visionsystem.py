@@ -11,6 +11,7 @@ from networktables import NetworkTables as nt
 import menus
 import configuration
 import threads
+import commands
 import visglobals
 from visglobals import ip, piip, null, myadr, comsock, visiontable
 
@@ -47,21 +48,21 @@ def startSystem():
     """
     Initiates the vision system application for the 2019 First Robotics Competition
     """
-    menustructure = {"Test": {"Do Nothing": null, "Switch Menus_*self*": null}}
+    menustructure = {"Test": {"Do Nothing": null, "Switch Menus_*self*": commands.startMatch}}
     win = tkwin.TkWin("Vision System", menustructure=menustructure)
     #Sets the function to be called when window is initated
-    systemthread = makeSystemThread()
+    systemthread = makeSystemThread(win)
     win.setThread(systemthread)
     #Sets up the main menu
     configuration.configureMainMenu(win)
     win.processGuiMap("mainmenu")
     win.runWin()
     
-def makeSystemThread():
+def makeSystemThread(win):
     """
     Thread fucntion to be called by the tkinter class
     """
-    thread = threads.SystemThread()
+    thread = threads.SystemThread(win)
     return thread
 
 def getActiveCams(numrange):

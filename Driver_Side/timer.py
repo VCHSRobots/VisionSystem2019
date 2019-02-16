@@ -13,21 +13,8 @@ class Timer:
   def updateTime(self):
     currenttime = time.perf_counter()
     timelost = currenttime - self.starttime
-    self.remaining = self.time - timelost
-    return self.remaining
+    remaining = self.time - timelost
+    return remaining
 
   def reset(self):
-    self.remaining = self.time
-
-  @property
-  def remaining(self):
-    self.__remaining = self.time
-  
-  @remaining.setter
-  def remaining(self, setval):
-    if setval > 0:
-      self.__remaining =  setval
-    if setval < self.time:
-      self.__remaining = self.time
-    if setval <= 0:
-      self.__remaining = 0
+    self.starttime = self.time

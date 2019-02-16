@@ -22,7 +22,7 @@ global commandfuncs
 #Interface Configuration Functions
 def configureMainMenu(self):
   global configwascalled
-  self.addButton(text = "Start Match!", command = self.switchUi, partialarg = competitioninterface, interface = "mainmenu")
+  self.addButton(text = "Start Match!", command = commands.startMatch, interface = "mainmenu")
   self.addButton(text = "Exit", command = self.root.quit, interface = "mainmenu")
   configwascalled["mainmenu"] = True
 
@@ -71,8 +71,7 @@ def configureMultiview(self):
   self.addText("Adjust Framerate", interface = "multiview")
   self.addText("Adjust Quality", interface = "multiview")
   self.addText("EPIC ROBOTZ Vision System: Crowded Interface Edition!", interface = "multiview")
-  self.vars["staged"] = self.cameras["multiview"]
-  self.vars["isstaged"] = [0, 1, 2, 3]
+  self.vars["staged"] = [0, 1, 2, 3]
   self.vars["isactive"] = True
   self.vars["color"] = True
   self.vars["quality"] = 4
@@ -82,21 +81,18 @@ def configureMultiview(self):
 def configureFourCam(self):
   configureStacks(self, "fourcam")
   self.vars["bandwidthreduced"] = False
-  self.vars["staged"] = self.cameras["match"]
-  self.vars["isstaged"] = [0, 1, 2, 3]
+  self.vars["staged"] = [0, 1, 2, 3]
 
 def configureSplitCam(self):
   global configwascalled
   configureStacks(self, "splitcam")
-  self.vars["staged"] = self.cameras["match"][0]
-  self.vars["isstaged"] = [0]
+  self.vars["staged"] = [0]
   self.vars["bandwidthreduced"] = False
   configwascalled["splitcam"] = True
 
 def configureOneCam(self):
   configureStacks(self, "onecam")
-  self.vars["staged"] = self.cameras["match"][0]
-  self.vars["isstaged"] = [0]
+  self.vars["staged"] = [0]
   self.vars["bandwidthreduced"] = False
 
 def configureStacks(self, interface):
@@ -134,15 +130,15 @@ def configureMatchCameras(self, neededcams = (0, 1, 2, 3), recams=False):
   Adds the four cameras needed for most match interfaces to window.cameras["match"]
   """
   #For the most part, an alias of addCams(self, neddedcams=(0,1,2,3), interface='match')
-  global camerasmade
-  if camerasmade:
+  if self.camerasconfiged:
     return
   if recams:
     cams = addCams(self, neededcams=neededcams, interface="match", recams=True) #Though there are many match interfaces, most functions dealing directly with cameras use the global "match" interface
+    self.camerasconfiged = True
     return cams
   else:
     addCams(self, neededcams, interface="match")
-  camerasmade = True
+    self.camerasconfiged = True
 
 def copyMatchCameras(self, interface):
   """

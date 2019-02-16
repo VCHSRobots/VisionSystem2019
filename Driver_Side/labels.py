@@ -15,7 +15,6 @@ from PIL import Image
 from PIL import ImageTk
 
 #Local Imports
-import sockettables
 import fonts
 from visglobals import ip, visiontable
 
@@ -56,7 +55,7 @@ class Widget:
 
 class Camera(Widget):
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
-    def __init__(self, camnum, root):
+    def __init__(self, camnum, root, window, interface, ind, sock = None, timeout = .05):
         #Camnum will match up with camnum on robot network
         self.root = root
         self.camnum = camnum
@@ -73,21 +72,44 @@ class Camera(Widget):
         self.updateOverNetwork()
         self.widget = tk.Label(root)
         #Makes a listener socket bound to this specific camera
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((ip, camnum+5800))
+        if sock:
+            self.sock = sock
+            self.sock.settimeout(timeout)
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind((ip, camnum+5800))
+            self.sock.settimeout(timeout)
         self.location = ()
+        self.failures = 0
+        self.ind = ind
+        self.window = window
+        self.interface = interface
         
     def updateImgOnLabel(self):
         """
         Places the latest image from the socket stream port aligning with the camnum
         """
         #Places an image from the networked camera on the label
+        print("attempting to update {}".format(self.camnum))
         image = self.getImgFromNetwork()
-        if not image:
+        if self.failures > 4:
+            self.swapWithFailedCamera()
             return
+        if not image:
+            self.failures += 1
+            return
+        elif self.failures > 0:
+            self.failures = 0
         self.widget.config(image=image)
         self.widget.image = image
     
+    def swapWithFailedCamera(self):
+        camera = FailedCamera(self.camnum, self.root, self.window, self.interface, self.ind, self.sock)
+        self.window.cameras[self.interface].remove(self)
+        self.window.cameras[self.interface].insert(self.ind, camera)
+        self.window.replaceWidget(self, camera)
+        self.widget.destroy()
+
     def updateOverNetwork(self):
         """
         Updates Networktable data about the camera
@@ -164,7 +186,7 @@ class Camera(Widget):
 
 class FailedCamera(Widget):
     #Camera fallback if a number cannot connect
-    def __init__(self, camnum, root, window, interface, ind):
+    def __init__(self, camnum, root, window, interface, ind, sock = None):
         #Camnum will match up with camnum on robot network
         self.root = root
         self.camnum = camnum
@@ -173,7 +195,6 @@ class FailedCamera(Widget):
         self.window = window
         self.interface = interface
         self.ind = ind
-
         #Original Camera class variables except socket
         self.active = True
         #TODO: Width and Height are magic numbers: replace them with a good default.
@@ -185,11 +206,20 @@ class FailedCamera(Widget):
         self.compression = 6
         self.quality = 95
         self.maxsize = 50000
+        self.location = ()
+        #Makes a listener socket bound to this specific camera
+        if sock:
+            self.sock = sock
+        else:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.sock.bind((ip, camnum+5800))
+        self.sock.setblocking(False)
         
     def updateImgOnLabel(self):
         """
         Placeholder for this method on Camera
         """
+        print("Trying To Connect")
         self.tryToConnect() #Tries to connect to proper camera
     
     def updateOverNetwork(self):
@@ -209,14 +239,24 @@ class FailedCamera(Widget):
         """
         Tests whether the camera being replaced has become avalible and puts it in place if it has
         """
-        if visiontable.getBoolean("{}isactive".format(self.camnum)):
-            camera = Camera(self.camnum, self.root)
-            self.window.cameras[self.interface].remove(self.widget)
-            self.window.cameras[self.interface].insert(self.ind, camera)
-            self.window.replaceWidget(self.widget, camera)
-            self.widget.destroy()
+        cangetimg = self.getImgWithTimeout()
+        if cangetimg:
+            self.replaceWithWorkingCamera()
+    
+    def replaceWithWorkingCamera(self):
+        camera = Camera(self.camnum, self.root, self.window, self.ind, self.sock)
+        self.window.cameras[self.interface].remove(self)
+        self.window.cameras[self.interface].insert(self.ind, camera)
+        self.window.replaceWidget(self, camera)
+        self.widget.destroy()
 
-
+    def getImgWithTimeout(self):
+        try:
+            self.sock.recv(self.maxsize)
+            return True
+        except socket.error:
+            return False
+        
     def shutdown(self):
         pass
     
