@@ -9,6 +9,7 @@ import zlib
 import cv2
 import io
 import sys
+import queue as queuelib
 import numpy as np
 from threads import VideoThread
 from PIL import Image
@@ -78,7 +79,7 @@ def readQueueWithTimeout(queue, timeout = .05):
   try:
     item = queue.get(timeout=timeout)
     return item
-  except queue.Empty:
+  except queuelib.Empty:
     return b""
   
 def writeToQueue(queue, item, timeout = .05):
@@ -86,7 +87,7 @@ def writeToQueue(queue, item, timeout = .05):
     try:
       queue.put(item, timeout=timeout)
       return True
-    except queue.Full:
+    except queuelib.Full:
       return False
   else:
     return False
@@ -271,7 +272,6 @@ def configMode(sock):
     cams = stdreader.scanForCameras()
     badcams = exportTestStream(sock, camdict)
     for camnum in cams:
-      table.putBoolean("{0}isactive".format(camnum), True)
       if (not camnum in camdict):
         camdict[camnum] = cv2.VideoCapture(indsused)
         indsused += 1

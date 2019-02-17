@@ -8,6 +8,7 @@ import imutils
 import time
 import io
 import zlib
+import queue as queuelib
 from queue import Queue
 from PIL import Image
 from networktables import NetworkTables as nt
@@ -52,6 +53,7 @@ class VideoThread(threading.Thread):
     self.lastqueuesize = 0
     self.lasttimesent = 0
     self.failures = 0
+    table.putBoolean("{0}isactive".format(camnum), True)
 
   def run(self):
     self.lasttimesent = time.perf_counter()
@@ -121,7 +123,7 @@ def readQueueWithTimeout(queue):
   try:
     item = queue.get(timeout=.05)
     return item
-  except queue.Empty:
+  except queuelib.Empty:
     return b""
   
 
@@ -129,5 +131,5 @@ def readQueueNoWait(queue):
   try:
     item = queue.get_nowait(timeout=.05)
     return item
-  except queue.Empty:
+  except queuelib.Empty:
     return b""
