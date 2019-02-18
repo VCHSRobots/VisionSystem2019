@@ -221,7 +221,7 @@ def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = U
       if time.perf_counter()-starttime > timeout:
         break
 
-def exportThreadStream(sock, camqueues, msgqueues, timeout = default_match_time, socktype = UDP):
+def exportQueueStream(sock, camqueues, msgqueues, timeout = default_match_time, socktype = UDP):
   #Queues should be {camnum: queue} pairs
   messages = {}
   totalsize = {}
@@ -243,9 +243,9 @@ def exportThreadStream(sock, camqueues, msgqueues, timeout = default_match_time,
     #processMessages()
     messages = {}
 
-def exportTestThreadStream(sock, camqueues, socktype = UDP):
+def exportTestQueueStream(sock, camqueues, socktype = UDP):
   """
-  Exports one image from each threaded camera
+  Exports one image from each queue
   """
   #Queues should be {camnum: queue} pairs
   for camnum in camqueues:
@@ -272,7 +272,7 @@ def getQueueMessages(msgqueues):
       messages[camnum] = message
   return messages
 
-def configMode(sock):
+def config(sock):
   message = b""
   camdict = {}
   indsused = 0
@@ -310,7 +310,7 @@ def configWithThreads(sock):
         msgqdict[camnum] = msgqueue
         indsused += 1
     sockmessage = recvWithTimeout(sock)
-    exportTestThreadStream(sock, camqdict)
+    exportTestQueueStream(sock, camqdict)
     messages = getQueueMessages(msgqdict)
     for camnum in messages:
       message = messages[camnum]
@@ -346,6 +346,63 @@ def configWithSockThreads(sock):
     messages = {}
   return msgqdict
 
+def configWithProcesses(sock):
+  sockmessage = b""
+  camqdict = {}
+  msgqdict = {}
+  messages = {}
+  indsused = 0
+  while sockmessage != b"start":
+    #Scans for active cameras and posts them to NetworkTables
+    cams = stdreader.scanForCameras()
+    for camnum in cams:
+      table.putBoolean("{}isactive".format(camnum), True)
+      if camnum not in camqdict:
+        camqueue = Queue()
+        msgqueue = Queue()
+        process = makeVideoProcess(camnum, indsused, camqueue, msgqueue)
+        process.start()
+        camqdict[camnum] = camqueue
+        msgqdict[camnum] = msgqueue
+        indsused += 1
+    sockmessage = recvWithTimeout(sock)
+    exportTestQueueStream(sock, camqdict)
+    messages = getQueueMessages(msgqdict)
+    for camnum in messages:
+      message = messages[camnum]
+      if message == b"dead":
+        camqdict.pop(camnum)
+        msgqdict.pop(camnum)
+        indsused -= 1
+    messages = {}
+  return camqdict, msgqdict
+  
+def configWithSenderProcesses(sock):
+  sockmessage = b""
+  msgqdict = {}
+  messages = {}
+  indsused = 0
+  while sockmessage != b"start":
+    #Scans for active cameras and posts them to NetworkTables
+    cams = stdreader.scanForCameras()
+    for camnum in cams:
+      table.putBoolean("{}isactive".format(camnum), True)
+      if camnum not in msgqdict:
+        msgqueue = Queue()
+        thread = makeVideoSenderProcess(camnum, indsused, msgqueue)
+        thread.start()
+        msgqdict[camnum] = msgqueue
+        indsused += 1
+    sockmessage = recvWithTimeout(sock)
+    messages = getQueueMessages(msgqdict)
+    for camnum in messages:
+      message = messages[camnum]
+      if message == b"dead":
+        msgqdict.pop(camnum)
+        indsused -= 1
+    messages = {}
+  return msgqdict
+  
 def recvWithTimeout(sock):
   """
   Recieves a message from the given socket and catches error if socket times out
@@ -367,7 +424,7 @@ def runMatch(time = 180):
   sock = setupSenderSocket()
   #Runs in configuration mode until recieving start signal
   try:
-    cams = configMode(sock)
+    cams = config(sock)
     #Exports vision system stream
     exportManagedStream(sock, cams, ip=cliip, timeout=time)
   finally:
@@ -375,13 +432,16 @@ def runMatch(time = 180):
     for camnum in cams:
       cams[camnum].release()
 
-def runThreadMatch(time = 180):
+def runParallelMatch(time = 180, processes = False):
   #Whether the stop message has been sent to the thread in case of error
   lastmsgsent = False
   sock = setupSenderSocket()
   try:
-    camqueues, msgqueues = configWithThreads(sock)
-    exportThreadStream(sock, camqueues, msgqueues, timeout=time)
+    if processes:
+      camqueues, msgqueues = configWithProcesses(sock)
+    else:
+      camqueues, msgqueues = configWithThreads(sock)
+    exportQueueStream(sock, camqueues, msgqueues, timeout=time)
   finally:
     sock.close()
     for camnum in msgqueues:
@@ -390,12 +450,15 @@ def runThreadMatch(time = 180):
         lastmsgsent = writeToQueue(msgqueues[camnum], b"stop")
       lastmsgsent = False
 
-def runSockThreadMatch(time = 180):
+def runParallelSenderMatch(time = 180, processes = False):
   #Whether the stop message has been sent to the thread in case of error
   lastmsgsent = False
   sock = setupSenderSocket()
   try:
-    msgqueues = configWithSockThreads(sock)
+    if processes:
+      msgqueues = configWithSenderProcesses(sock)
+    else:
+      msgqueues = configWithSockThreads(sock)
     time.sleep(time)
   finally:
     sock.close()
@@ -404,7 +467,7 @@ def runSockThreadMatch(time = 180):
       while not lastmsgsent:
         lastmsgsent = writeToQueue(msgqueues[camnum], b"stop")
       lastmsgsent = False
-
+      
 def test(time=180):
   """
   Safe test function of the vision system
