@@ -11,7 +11,7 @@ import io
 import sys
 import queue as queuelib
 import numpy as np
-from threads import VideoThread
+from threads import VideoThread, VideoSender
 from PIL import Image
 from queue import Queue
 from networktables import NetworkTables as nt
@@ -121,10 +121,19 @@ def makeThreadCam(camnum, camind):
   Makes a camera-managing thread
   Returns the thread along with the assocated queue
   """
-  camqueue = Queue(cam_queue_size)
-  msgqueue = Queue(message_queue_size)
+  camqueue = Queue()
+  msgqueue = Queue()
   thread = VideoThread(camnum=camnum, camind=camind, camqueue=camqueue, msgqueue=msgqueue, threadID=camnum)
   return thread, camqueue, msgqueue
+
+def makeVideoSender(camnum, camind):
+  """
+  Makes a camera-managing thread
+  Returns the thread along with the assocated queue
+  """
+  msgqueue = Queue()
+  thread = VideoSender(camnum=camnum, camind=camind, msgqueue=msgqueue, threadID=camnum)
+  return thread, msgqueue
   
 def findCam(numrange = (0, 100)):
   """
@@ -312,6 +321,31 @@ def configWithThreads(sock):
     messages = {}
   return camqdict, msgqdict
   
+def configWithSockThreads(sock):
+  sockmessage = b""
+  msgqdict = {}
+  messages = {}
+  indsused = 0
+  while sockmessage != b"start":
+    #Scans for active cameras and posts them to NetworkTables
+    cams = stdreader.scanForCameras()
+    for camnum in cams:
+      table.putBoolean("{}isactive".format(camnum), True)
+      if camnum not in msgqdict:
+        thread, msgqueue = makeVideoSender(camnum, indsused)
+        thread.start()
+        msgqdict[camnum] = msgqueue
+        indsused += 1
+    sockmessage = recvWithTimeout(sock)
+    messages = getQueueMessages(msgqdict)
+    for camnum in messages:
+      message = messages[camnum]
+      if message == b"dead":
+        msgqdict.pop(camnum)
+        indsused -= 1
+    messages = {}
+  return msgqdict
+
 def recvWithTimeout(sock):
   """
   Recieves a message from the given socket and catches error if socket times out
@@ -348,6 +382,21 @@ def runThreadMatch(time = 180):
   try:
     camqueues, msgqueues = configWithThreads(sock)
     exportThreadStream(sock, camqueues, msgqueues, timeout=time)
+  finally:
+    sock.close()
+    for camnum in msgqueues:
+      lastmsgsent = False
+      while not lastmsgsent:
+        lastmsgsent = writeToQueue(msgqueues[camnum], b"stop")
+      lastmsgsent = False
+
+def runSockThreadMatch(time = 180):
+  #Whether the stop message has been sent to the thread in case of error
+  lastmsgsent = False
+  sock = setupSenderSocket()
+  try:
+    msgqueues = configWithSockThreads(sock)
+    time.sleep(time)
   finally:
     sock.close()
     for camnum in msgqueues:
