@@ -11,9 +11,10 @@ import io
 import sys
 import queue as queuelib
 import numpy as np
+from multi import makeVideoProcess, makeVideoSenderProcess
 from threads import VideoThread, VideoSender
 from PIL import Image
-from queue import Queue
+from queue import Queue, LifoQueue
 from networktables import NetworkTables as nt
 
 import stdreader
@@ -70,8 +71,9 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
 
 def exportImageFromQueue(sock, queue, camnum):
   img = readQueueWithTimeout(queue)
-  if img in message_options:
-    return sock.sendTo(img, (cliip, 5800+camnum))
+  if img != b"":
+    print(cliip, 5800+camnum)
+    return sock.sendto(img, (cliip, 5800+camnum))
   else:
     return -1
   
@@ -116,15 +118,13 @@ def makeCam(camnum):
   else:
     return False
 
-def makeThreadCam(camnum, camind):
+def makeThreadCam(camnum, camind, camqueue, msgqueue):
   """
   Makes a camera-managing thread
   Returns the thread along with the assocated queue
   """
-  camqueue = Queue()
-  msgqueue = Queue()
   thread = VideoThread(camnum=camnum, camind=camind, camqueue=camqueue, msgqueue=msgqueue, threadID=camnum)
-  return thread, camqueue, msgqueue
+  return thread
 
 def makeVideoSender(camnum, camind):
   """
@@ -203,8 +203,6 @@ def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = U
       timerecords[ind][0] = time.perf_counter()
       if camvals["isactive"] and timerecords[ind][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
         size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals, ip=ip)
-        if size == -1:
-            continue
         totalsize += size
         timerecords[ind][1] = 0
         framesent += 1
@@ -224,22 +222,29 @@ def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = U
 def exportQueueStream(sock, camqueues, msgqueues, timeout = default_match_time, socktype = UDP):
   #Queues should be {camnum: queue} pairs
   messages = {}
-  totalsize = {}
-  framessent = {}
+  totalsize = {camnum: 0 for camnum in camqueues}
+  framessent = {camnum: 0 for camnum in camqueues}
+  lasttimesent = {camnum: 0 for camnum in camqueues}
   starttime = time.perf_counter()
+  lasttimesincediag = 0
   while time.perf_counter()-starttime > 0:
     for camnum in camqueues:
-      size = exportImageFromQueue(sock, camqueues[camnum], camnum)
-      messages[camnum] = readQueueWithTimeout(msgqueues[camnum])
-      totalsize[camnum] += size
-      framessent[camnum] += 1
-    if time.perf_counter()-lastimesincediag >= 10:
+      camvals = pollCamVars(camnum)
+      if time.perf_counter()-lasttimesent[camnum] >= (1/camvals["framerate"]):
+        size = exportImageFromQueue(sock, camqueues[camnum], camnum)
+        if size == -1:
+            continue
+        messages[camnum] = readQueueWithTimeout(msgqueues[camnum])
+        totalsize[camnum] += size
+        framessent[camnum] += 1
+        lasttimesent[camnum] = time.perf_counter()
+      if time.perf_counter()-lasttimesincediag >= 10:
         bytespersec = totalsize[camnum]/10
         fps = framessent[camnum]/10
-        print("{0} frames sent at {1}fps. Average image size: {2}".format(framessent, fps, bytespersec*8/1000000))
+        print("{0} frames sent at {1}fps. Average image size: {2}".format(framessent[camnum], fps, bytespersec*8/1000000))
         framessent[camnum] = 0
         totalsize[camnum] = 0
-        lastimesincediag = time.perf_counter()
+        lasttimesincediag = time.perf_counter()
     #processMessages()
     messages = {}
 
@@ -298,27 +303,34 @@ def configWithThreads(sock):
   msgqdict = {}
   messages = {}
   indsused = 0
-  while sockmessage != b"start":
-    #Scans for active cameras and posts them to NetworkTables
-    cams = stdreader.scanForCameras()
-    for camnum in cams:
-      table.putBoolean("{}isactive".format(camnum), True)
-      if camnum not in camqdict:
-        thread, camqueue, msgqueue = makeThreadCam(camnum, indsused)
-        thread.start()
-        camqdict[camnum] = camqueue
-        msgqdict[camnum] = msgqueue
-        indsused += 1
-    sockmessage = recvWithTimeout(sock)
-    exportTestQueueStream(sock, camqdict)
-    messages = getQueueMessages(msgqdict)
-    for camnum in messages:
-      message = messages[camnum]
-      if message == b"dead":
-        camqdict.pop(camnum)
-        msgqdict.pop(camnum)
-        indsused -= 1
-    messages = {}
+  try:
+    while sockmessage != b"start":
+      #Scans for active cameras and posts them to NetworkTables
+      cams = stdreader.scanForCameras()
+      for camnum in cams:
+        table.putBoolean("{}isactive".format(camnum), True)
+        if camnum not in camqdict:
+          camqueue = LifoQueue()
+          msgqueue = LifoQueue()
+          thread = makeThreadCam(camnum, indsused, camqueue, msgqueue)
+          thread.start()
+          camqdict[camnum] = camqueue
+          msgqdict[camnum] = msgqueue
+          indsused += 1
+      sockmessage = recvWithTimeout(sock)
+      exportTestQueueStream(sock, camqdict)
+      messages = getQueueMessages(msgqdict)
+      for camnum in messages:
+        message = messages[camnum]
+        if message == b"dead":
+          camqdict.pop(camnum)
+          msgqdict.pop(camnum)
+          indsused -= 1
+      messages = {}
+  except:
+    for camnum in msgqdict:
+      msgqdict[camnum].put(b"stop")
+    raise
   return camqdict, msgqdict
   
 def configWithSockThreads(sock):
@@ -358,8 +370,8 @@ def configWithProcesses(sock):
     for camnum in cams:
       table.putBoolean("{}isactive".format(camnum), True)
       if camnum not in camqdict:
-        camqueue = Queue()
-        msgqueue = Queue()
+        camqueue = LifoQueue()
+        msgqueue = LifoQueue()
         process = makeVideoProcess(camnum, indsused, camqueue, msgqueue)
         process.start()
         camqdict[camnum] = camqueue
@@ -411,7 +423,7 @@ def recvWithTimeout(sock):
     message = sock.recv(128)
   except socket.error:
       message = b""
-      print("loop passed")
+      print("Listening for start siginal")
   return message
 
 def sendWithTimeout(sock, msg, adr):
@@ -487,4 +499,4 @@ def test(time=180):
       cams[camnum].release()
 
 if __name__ == "__main__":
-    runMatch()
+    runParallelSenderMatch(processes=True)
