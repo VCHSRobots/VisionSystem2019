@@ -53,6 +53,17 @@ def setupSenderSocket(socktype = UDP, timeout = .05):
   #   sock.listen()
   return sock
 
+def setupListenerSocket(socktype = UDP, timeout = .05):
+  """
+  Sets up and returns a ready to use socket bound to the ip and port arguments
+  """
+  sock = socket.socket(socket.AF_INET, socktype)
+  sock.settimeout(.05)
+  #Not Complete Yet
+  #if socktype == TCP:
+  #   sock.listen()
+  return sock
+
 def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
   """
   Reads, sterilizes, and exports an image from the OpenCV camera
@@ -219,6 +230,40 @@ def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = U
       if time.perf_counter()-starttime > timeout:
         break
 
+def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
+  """
+  Exports a stream of images with each camera individually managed by its NetworkTables values
+  """
+  #cams = scanForCams(numrange=(0,10)) #Gets a dict of avalible cams within the number range
+  starttime = time.perf_counter()
+  lastimesent = 0
+  #The last time since diagnostic data was printed
+  lastimesincediag = 0
+  framesent = 0
+  totalsize = 0
+  while time.perf_counter()-starttime <= time:
+    camvals = pollCamVars(camnum)
+    #Casts certain numerical camera values to integer
+    for key in intvals:
+      camvals[key] = int(camvals[key])
+    if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
+      size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals, ip=ip)
+      totalsize += size
+      framesent += 1
+      lastimesent = time.perf_counter()
+    if time.perf_counter()-lastimesincediag >= 10:
+      bytespersec = totalsize/10
+      fps = framesent/10
+      print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, bytespersec*8/1000000))
+      framesent = 0
+      totalsize = 0
+      lastimesincediag = time.perf_counter()
+  if cv2.waitKey(1) == 0:
+    break
+  if timeout:
+    if time.perf_counter()-starttime > timeout:
+      break
+        
 def exportQueueStream(sock, camqueues, msgqueues, timeout = default_match_time, socktype = UDP):
   #Queues should be {camnum: queue} pairs
   messages = {}
@@ -415,6 +460,39 @@ def configWithSenderProcesses(sock):
     messages = {}
   return msgqdict
   
+def testCamInd(camnum):
+  camera = cv2.VideoCapture(camnum)
+  if camera.grab():
+    return camera
+  else:
+    return None
+  
+def testCamera(camera):
+  if camera.grab():
+    return True
+  else:
+    return False
+  
+def configSingle(listener):
+  #Assumes only one camera is plugged in
+  camera = testCamInd(0)
+  sockmessage = b""
+  started = False
+  while not started and camera != None:
+    camnums = stdreader.scanForCameras()
+    if camera == None and camnums:
+      camera = testCamnum(len(camnums)-1)
+    elif not camnums and type(camera) == cv2.VideoCapture:
+      #If the camera was unplugged but the object still registers
+      camera = None
+    elif type(camera) == cv2.VideoCapture:
+      #Otherwise, test if camera is alive
+      if not testCamera(camera):
+        camera = None
+    sockmessage = recvWithTimeout(listener)
+    started = sockmessage == b"start"
+  return camera
+  
 def recvWithTimeout(sock):
   """
   Recieves a message from the given socket and catches error if socket times out
@@ -498,5 +576,14 @@ def test(time=180):
     for camnum in cams:
       cams[camnum].release()
 
+def runSingleMatch(camnum):
+  sock = setupListenerSocket()
+  try:
+    camera = configSingle(listener=socket)
+  finally:
+    sock.close()
+  sock = setupSenderSocket()
+  exportCamStream(sock, camnum, camera)
+  
 if __name__ == "__main__":
     runParallelSenderMatch(processes=True)
