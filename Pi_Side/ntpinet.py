@@ -207,9 +207,6 @@ def exportManagedStream(sock, cams, ip = cliip, numrange = (0, 10), socktype = U
   while True:
     for ind, num in enumerate(cams):
       camvals = pollCamVars(num)
-      #Casts certain numerical camera values to integer
-      for key in intvals:
-        camvals[key] = int(camvals[key])
       timerecords[ind][1] += time.perf_counter()-timerecords[ind][0] #Compares current time to time since the last time update to see how much time has passed
       timerecords[ind][0] = time.perf_counter()
       if camvals["isactive"] and timerecords[ind][1] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
@@ -243,9 +240,6 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
   totalsize = 0
   while time.perf_counter()-starttime <= time:
     camvals = pollCamVars(camnum)
-    #Casts certain numerical camera values to integer
-    for key in intvals:
-      camvals[key] = int(camvals[key])
     if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
       size = exportImage(camera=cams[num], camnum=num, sock=sock, camvals=camvals, ip=ip)
       totalsize += size
@@ -264,6 +258,33 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
     if time.perf_counter()-starttime > timeout:
       break
         
+def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = UDP):
+  startime = time.perf_counter()
+  lastimesincediag = [0] * len(cams)
+  framesent = lastimesincediag
+  totalsize = lastimesincediag
+  lasttimesent = lastimesincediag
+  activecam = None
+  while time.perf_counter()-startime < timeout:
+    for camnum in camnums:
+      camvals = pollCamVars(camnum)
+      if camvals["isactive"] and time.perf_counter()-lasttimesent[camnum] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
+        activecam = cv2.VideoCapture(camnum)
+        size = exportImage(camera=activecams, camnum=camnum, sock=sock, camvals=camvals, ip=ip)
+        if size == -1:
+          continue
+        activecam.release()
+        totalsize[camnum] += size
+        framesent[camnum] += 1
+        lasttimesent[camnum] = time.perf_counter()
+      if time.perf_counter()-lastimesincediag[camnum] >= 10:
+        bytespersec = totalsize[camnum]/10
+        fps = framesent[camnum]/10
+        print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, bytespersec*8/1000000))
+        framesent[camnum] = 0
+        totalsize[camnum] = 0
+        lastimesincediag[camnum] = time.perf_counter()
+
 def exportQueueStream(sock, camqueues, msgqueues, timeout = default_match_time, socktype = UDP):
   #Queues should be {camnum: queue} pairs
   messages = {}
