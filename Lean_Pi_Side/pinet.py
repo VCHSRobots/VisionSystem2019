@@ -55,12 +55,59 @@ def setupListenerSocket(socktype = UDP, timeout = .05):
 def runSingleMatch(camnum):
   sock = setupListenerSocket()
   try:
-    camera = configSingle(listener=socket)
+    camera = configSingle(listener=sock)
   finally:
     sock.close()
   sock = setupSenderSocket()
   exportCamStream(sock, camnum, camera)
+
+def runSwappableMatch():
+  sock = setupListenerSocket()
+  try:
+    camnums = configSingle(listener=sock)
+  finally:
+    sock.close()
+  sock = setupSenderSocket()
+  exportSwappableStream(sock, camnums)
   
+def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype = UDP):
+  #Camnums are the potential camera numbers to be switched to
+  starttime = time.perf_counter()
+  lastimesent = 0
+  #The last time since diagnostic data was printed
+  lastimesincediag = 0
+  framesent = 0
+  totalsize = 0
+  activecam = table.getNumber("activecam", camnums[0])
+  if activecam in camnums:
+    camera = cv2.VideoCapture(activecam)
+  else:
+    camera = cv2.VideoCapture(0)
+  while time.perf_counter()-starttime <= time:
+    if activecam != table.getNumber("activecam", camnums[0]):
+      camera.release()
+      activecam = table.getNumber("activecam", camnums[0])
+      if activecam in camnums:
+        camera = cv2.VideoCapture(activecam)
+      else:
+        camera = cv2.VideoCapture(0)
+    camvals = pollCamVars(activecam)
+    if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
+      size = exportImage(camera=camera, camnum=activecam, sock=sock, camvals=camvals, ip=cliip)
+      if size == -1:
+        continue
+      totalsize += size
+      framesent += 1
+      lastimesent = time.perf_counter()
+    if time.perf_counter()-lastimesincediag >= 10:
+      bytespersec = totalsize/10
+      fps = framesent/10
+      print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, bytespersec*8/1000000))
+      framesent = 0
+      totalsize = 0
+      lastimesincediag = time.perf_counter()
+      cv2.waitKey(1)
+
 def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
   """
   Exports a stream of images from the given camera
@@ -90,11 +137,7 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
       framesent = 0
       totalsize = 0
       lastimesincediag = time.perf_counter()
-  if cv2.waitKey(1) == 0:
-    break
-  if timeout:
-    if time.perf_counter()-starttime > timeout:
-      break
+    cv2.waitKey(1)
         
 def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
   """
@@ -124,10 +167,43 @@ def processImg(img, camvals):
   imgbytes = imgbytes.getvalue()
   imgbytes = zlib.compress(imgbytes, camvals["compression"])
   return imgbytes
-  
+
+def recvWithTimeout(sock):
+  try:
+    return sock.recv()
+  except socket.error:
+    return b""
+
+def configSwappableStream(listener):
+  """
+  Returns a list of plugged in cameras
+  Cameras MUST be plugged in in the order they appear or the system may become confused
+  """
+  camnums = []
+  camnumstoremove = []
+  sockmessage = b""
+  started = False
+  while not started:
+    newcamnums = stdreader.scanForCameras()
+    #Checks for and appends new cameras
+    for camnum in newcamnums:
+      if camnum not in camnums:
+        camnums.append(camnum)
+    #Removes any unplugged cameras
+    for camnum in camnums:
+      if camnum not in newcamnums:
+        camnumstoremove.append(camnum)
+    for camnum in camnumstoremove:
+      camnums.remove(camnum)
+    camnumstoremove = []
+    #Listens for start signal
+    sockmessage = recvWithTimeout(listener)
+    started = sockmessage == b"start"
+  return camnums
+
 def configSingle(listener):
   #Assumes only one camera is plugged in
-  camera = testCameraInd(0)
+  camera = testCamnum(0)
   sockmessage = b""
   started = False
   while not started and camera != None:
@@ -145,7 +221,7 @@ def configSingle(listener):
     started = sockmessage == b"start"
   return camera
   
-def testCameraInd(camnum):
+def testCamnum(camnum):
   camera = cv2.VideoCapture(camnum)
   if camera.grab():
     return camera

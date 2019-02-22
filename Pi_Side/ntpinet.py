@@ -242,7 +242,7 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
   while time.perf_counter()-starttime <= time:
     camvals = pollCamVars(camnum)
     if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
-      size = exportImage(camera=camera, camnum=num, sock=sock, camvals=camvals, ip=ip)
+      size = exportImage(camera=camera, camnum=camnum, sock=sock, camvals=camvals, ip=cliip)
       totalsize += size
       framesent += 1
       lastimesent = time.perf_counter()
@@ -253,11 +253,11 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
       framesent = 0
       totalsize = 0
       lastimesincediag = time.perf_counter()
-      cv2.waitKey(1) == 0:
+      cv2.waitKey(1)
         
 def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = UDP):
   startime = time.perf_counter()
-  lastimesincediag = [0] * len(cams)
+  lastimesincediag = [0] * len(camnums)
   framesent = lastimesincediag
   totalsize = lastimesincediag
   lasttimesent = lastimesincediag
@@ -266,7 +266,7 @@ def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = U
       camvals = pollCamVars(camnum)
       if camvals["isactive"] and time.perf_counter()-lasttimesent[camnum] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
         activecam = cv2.VideoCapture(camnum)
-        size = exportImage(camera=activecam, camnum=camnum, sock=sock, camvals=camvals, ip=ip)
+        size = exportImage(camera=activecam, camnum=camnum, sock=sock, camvals=camvals, ip=cliip)
         if size == -1:
           continue
         activecam.release()
@@ -281,7 +281,7 @@ def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = U
         totalsize[camnum] = 0
         lastimesincediag[camnum] = time.perf_counter()
 
-def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype = UDP)):
+def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype = UDP):
   #Camnums are the potential camera numbers to be switched to
   starttime = time.perf_counter()
   lastimesent = 0
@@ -304,8 +304,8 @@ def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype 
         camera = cv2.VideoCapture(0)
     camvals = pollCamVars(activecam)
     if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
-      size = exportImage(camera=camera, camnum=num, sock=sock, camvals=camvals, ip=ip)
-      if size = -1:
+      size = exportImage(camera=camera, camnum=activecam, sock=sock, camvals=camvals, ip=cliip)
+      if size == -1:
         continue
       totalsize += size
       framesent += 1
@@ -515,7 +515,7 @@ def configWithSenderProcesses(sock):
     messages = {}
   return msgqdict
   
-def testCamInd(camnum):
+def testCamnum(camnum):
   camera = cv2.VideoCapture(camnum)
   if camera.grab():
     return camera
@@ -530,7 +530,7 @@ def testCamera(camera):
   
 def configSingle(listener):
   #Assumes only one camera is plugged in
-  camera = testCamInd(0)
+  camera = testCamnum(0)
   sockmessage = b""
   started = False
   while not started and camera != None:
