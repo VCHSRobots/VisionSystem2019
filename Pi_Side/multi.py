@@ -4,8 +4,14 @@
 import time
 import cv2
 import socket
+import imutils
+import io
+import zlib
+import queue as queuelib
+from PIL import Image
 from multiprocessing import Process
 from queue import Queue
+from networktables import NetworkTables as nt
 
 #Globals
 RGB = cv2.COLOR_BGR2RGB
@@ -44,7 +50,7 @@ def runVideoProcess(camnum, camind, camqueue, msgqueue):
         paused = True
       elif msg == b"go":
         paused = False
-      if self.paused:
+      if paused:
         continue
       camvals = pollCamVars(camnum)
       if camvals["isactive"] and (time.perf_counter()-lasttimesent) >= 1/camvals["framerate"]:
@@ -77,18 +83,18 @@ def runVideoSender(camnum, camind, msgqueue):
       paused = True
     elif msg == b"go":
       paused = False
-    if self.paused:
+    if paused:
       continue
     camvals = pollCamVars(camnum)
     if camvals["isactive"] and (time.perf_counter()-lasttimesent) >= 1/camvals["framerate"]:
       ret, img = camera.read()
       if ret:
         if failures > 0:
-          self.failures = 0
+          failures = 0
         img = processImage(img, camvals)
-        size = sock.sendto(img, (cliip, 5800+self.camnum))
+        size = sock.sendto(img, (cliip, 5800+camnum))
       else:
-        self.failures += 1
+        failures += 1
   camera.release()
   msgqueue.put(b"dead")
 

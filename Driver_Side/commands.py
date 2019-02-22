@@ -164,20 +164,24 @@ def stageFrontCam(self):
     #The staged (active) camera objects
     self.vars["staged"] = [0]
     resetToggles(self, 0)
+    visiontable.putNumber("activecam", 0)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageBackCam(self):
     self.vars["staged"] = [1]
+    visiontable.putNumber("activecam", 1)
     resetToggles(self, 1)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageLeftCam(self):
     self.vars["staged"] = [2]
+    visiontable.putNumber("activecam", 2)
     resetToggles(self, 2)
     putToDash(self, "staged", self.vars["isstaged"])
 
 def stageRightCam(self):
     self.vars["staged"] = [3]
+    visiontable.putNumber("activecam", 3)
     resetToggles(self, 3)
     putToDash(self, "staged", self.vars["isstaged"])
 

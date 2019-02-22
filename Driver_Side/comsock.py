@@ -9,7 +9,7 @@ import queue
 
 #Local Imports
 import logs
-from visglobals import myadr, piadr, internadr
+from visglobals import myadr, piadr
 
 #This library is usually run in a thread which communicates by socket to the main library
 
@@ -106,6 +106,8 @@ def getQueue(q):
     item = None
   return item
 
+#Not Working; uses deleted feature
+"""
 def mainloop(timeout):
   print(myadr)
   q = queue.Queue()
@@ -156,3 +158,4 @@ def mainloop(timeout):
         changeSetting(setting, value)
   comsock.shutdown()
   comsock.close()
+"""

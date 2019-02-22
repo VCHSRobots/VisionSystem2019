@@ -12,6 +12,7 @@ import sys
 import queue as queuelib
 import numpy as np
 from threads import VideoThread, VideoSender
+from multi import makeVideoProcess, makeVideoSenderProcess
 from PIL import Image
 from queue import Queue
 from networktables import NetworkTables as nt

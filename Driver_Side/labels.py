@@ -136,7 +136,8 @@ class Camera(Widget):
         """
         Polls the latest image from the network socket which corresponds with the camera number
         """
-        self.checkSize() #Checks if buffer is large enough to hold incoming image 
+        #Commented out since it needs networktables
+        #self.checkSize() #Checks if buffer is large enough to hold incoming image
         #Passes over image processing if socket times out
         img = self.recvWithTimeout()
         if img == b"":
@@ -205,7 +206,7 @@ class FailedCamera(Widget):
         self.quantization = 8
         self.compression = 6
         self.quality = 95
-        self.maxsize = 50000
+        self.maxsize = 5000000
         self.location = ()
         #Makes a listener socket bound to this specific camera
         if sock:
@@ -219,7 +220,6 @@ class FailedCamera(Widget):
         """
         Placeholder for this method on Camera
         """
-        print("Trying To Connect")
         self.tryToConnect() #Tries to connect to proper camera
     
     def updateOverNetwork(self):
@@ -239,12 +239,14 @@ class FailedCamera(Widget):
         """
         Tests whether the camera being replaced has become avalible and puts it in place if it has
         """
+        print("Trying to connect")
         cangetimg = self.getImgWithTimeout()
+        print(cangetimg)
         if cangetimg:
             self.replaceWithWorkingCamera()
     
     def replaceWithWorkingCamera(self):
-        camera = Camera(self.camnum, self.root, self.window, self.ind, self.sock)
+        camera = Camera(camnum=self.camnum, root=self.root, window=self.window, ind=self.ind, interface=self.interface, sock=self.sock)
         self.window.cameras[self.interface].remove(self)
         self.window.cameras[self.interface].insert(self.ind, camera)
         self.window.replaceWidget(self, camera)
