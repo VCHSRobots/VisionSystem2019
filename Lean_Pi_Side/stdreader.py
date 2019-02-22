@@ -4,9 +4,6 @@
 import time
 import subprocess as sub
 
-#Globals
-devNumNames = {6: "Front", 7: "Back", 8: "Left", 9: "Right"}
-
 def openBashScript(scriptname):
   f = open(scriptname+".bat")
   script = f.read()
