@@ -255,7 +255,6 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
       cv2.waitKey(1) == 0:
         
 def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = UDP):
-  #Camnums are the potential camera numbers to be switched to
   startime = time.perf_counter()
   lastimesincediag = [0] * len(cams)
   framesent = lastimesincediag
@@ -281,7 +280,8 @@ def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = U
         totalsize[camnum] = 0
         lastimesincediag[camnum] = time.perf_counter()
 
-def exportSwappableStream():
+def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype = UDP)):
+  #Camnums are the potential camera numbers to be switched to
   starttime = time.perf_counter()
   lastimesent = 0
   #The last time since diagnostic data was printed
@@ -289,11 +289,18 @@ def exportSwappableStream():
   framesent = 0
   totalsize = 0
   activecam = table.getNumber("activecam", camnums[0])
-  camera = cv2.VideoCapture(activecam)
+  if activecam in camnums:
+    camera = cv2.VideoCapture(activecam)
+  else:
+    camera = cv2.VideoCapture(0)
   while time.perf_counter()-starttime <= time:
     if activecam != table.getNumber("activecam", camnums[0]):
       camera.release()
-      camera = cv2.VideoCapture(activecam)
+      activecam = table.getNumber("activecam", camnums[0])
+      if activecam in camnums:
+        camera = cv2.VideoCapture(activecam)
+      else:
+        camera = cv2.VideoCapture(0)
     camvals = pollCamVars(activecam)
     if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
       size = exportImage(camera=camera, camnum=num, sock=sock, camvals=camvals, ip=ip)
