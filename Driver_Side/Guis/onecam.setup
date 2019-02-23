@@ -1,1 +1,5 @@
-{"buttons": [{"text": "Lower Bandwidth", "command": "toggleBandwidth"}, {"text": "Front", "command": "showFront"}, {"text": "Back", "command": "showBack"}, {"text": "Left", "command": "showLeft"}, {"text": "Right", "command": "showRight"}]}
+{"buttons": [{"text": "Lower Bandwidth", "command": "toggleBandwidth"}, 
+            {"text": "Cam1", "command": "showFront"}, 
+            {"text": "Cam2", "command": "showBack"}, 
+            {"text": "Cam3", "command": "showLeft"},
+            {"text": "Spare", "command": "showRight"}]}

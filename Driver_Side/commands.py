@@ -12,12 +12,19 @@ from visglobals import comsock, piadr, visiontable, competitioninterface
 camnames = {0: "Front", 1: "Rear", 2: "Left", 3: "Right"}
 
 #Globally used commands
-def startMatch(self):
-    """
-    Sends the Vision System start siginal for a competition match
-    """
+
+def configSystem(self):
+    visiontable.putBoolean("config", True)
+
+def sendSignal(self):
     sendStartSignal(comsock)
+
+def startMatchInterface(self):
+    """
+    Sends the Vision System start signal for a competition match
+    """
     self.switchUi(competitioninterface)
+    sendStartSignal(comsock)
 
 def swapOutCam(self, replacedcam, newcam):
     """
@@ -66,7 +73,6 @@ def putToDash(self, textbox, value):
         staged = ""
         #Lists staged cameras in a gramatically correct manner
         for ind, val in enumerate(value):
-            print(ind, len(value))
             if ind == 0:
                 if len(value) > 2:
                     staged += camnames[val] + ", "
@@ -75,23 +81,20 @@ def putToDash(self, textbox, value):
                 else:
                     staged += camnames[val] + " "
             elif ind == len(value)-1:
-                print("Here")
                 staged += "and " + camnames[val]
             else:
                 staged += camnames[val] + ", "
-        if len(self.vars["isstaged"]) > 1:
+        if len(self.vars["staged"]) > 1:
             text = "The {} cameras are staged".format(staged)
         else:
             text = "The {} camera is staged".format(staged)
-        print(text)
-        print(self.textboxes)
         self.textboxes["multiview"][0].setValue(text)
     elif textbox == "active":
         if value == True:
             active = "active"
         elif value == False:
             active = "not active"
-        plural = len(self.vars["isstaged"]) > 1
+        plural = len(self.vars["staged"]) > 1
         if plural:
             text = "The staged cameras are {}".format(active)
         else:
@@ -111,7 +114,6 @@ def putToDash(self, textbox, value):
         #Finds whether main, side, or both hierarchies of camera are staged
         stagedhierarchies = stagedCamHierarchies(self)
         resolutions = ""
-        print(stagedhierarchies)
         if stagedhierarchies[0] and stagedhierarchies[1]:
             resolutions += "\n({}x{} for main cameras and {}x{} for side cameras)".format(int(480*(value/7)), int(640*(value/7)), int(480*(value/14)), int(640*(value/14)))
         elif stagedhierarchies[0] and (not stagedhierarchies[1]):
@@ -152,7 +154,7 @@ def setRemainingTime(self, time):
     putToDash(self, "diagnostic", text)
 
 def stagedCamHierarchies(self):
-    staged = self.vars["isstaged"]
+    staged = self.vars["staged"]
     stagedhierarchies = [False, False]
     if (0 in staged) or (1 in staged):
         stagedhierarchies[0] = True
@@ -165,40 +167,40 @@ def stageFrontCam(self):
     self.vars["staged"] = [0]
     resetToggles(self, 0)
     visiontable.putNumber("activecam", 0)
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def stageBackCam(self):
     self.vars["staged"] = [1]
     visiontable.putNumber("activecam", 1)
     resetToggles(self, 1)
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def stageLeftCam(self):
     self.vars["staged"] = [2]
     visiontable.putNumber("activecam", 2)
     resetToggles(self, 2)
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def stageRightCam(self):
     self.vars["staged"] = [3]
     visiontable.putNumber("activecam", 3)
     resetToggles(self, 3)
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def stageAllCams(self):
     self.vars["staged"] = [0, 1, 2 ,3]
     resetToggles(self, "all")
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def stageMainCams(self):
     self.vars["staged"] = [0, 1]
     resetToggles(self, "main")
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def stageSubCams(self):
     self.vars["staged"] = [2, 3]
     resetToggles(self, "sub")
-    putToDash(self, "staged", self.vars["isstaged"])
+    putToDash(self, "staged", self.vars["staged"])
 
 def resetToggles(self, staged):
     resetActivity(self, staged)
@@ -263,7 +265,7 @@ def updateToFramerate(self):
         elif ind in sides:
             updateCamToFramerate(camera, preset, main=False)
         else:
-            raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][ind]))
+            raise ValueError("Staged Index {} out of known range".format(self.vars["staged"][ind]))
 
 def updateCamToFramerate(camera, preset, main = True):
     """
@@ -305,7 +307,7 @@ def updateToQuality(self):
         elif ind in sides:
             updateCamToQuality(camera, preset, main=False)
         else:
-            raise ValueError("Staged Index {} out of known range".format(self.vars["isstaged"][ind]))
+            raise ValueError("Staged Index {} out of known range".format(self.vars["staged"][ind]))
 
 def updateCamToQuality(camera, preset, main = True):
     """
@@ -422,7 +424,6 @@ def splitCamInFour(self, order=[0,1,2,3]):
     rowspans = int(defaultlocation[2]/4), int(defaultlocation[2]/4), int(defaultlocation[2]/4), int(defaultlocation[2]/4)
     columnspans = int(defaultlocation[3]/4), int(defaultlocation[3]/4), int(defaultlocation[3]/4), int(defaultlocation[3]/4)
     for ind in range(4):
-        print(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
         self.gridWidget(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
     self.vars["staged"] = order
 
@@ -442,20 +443,27 @@ def switchCam(self, camnum):
     self.vars["staged"] = [camnum]
 
 def frontCam(self):
+    visiontable.putNumber("activecam", 0)
+    visiontable.putBoolean("0isactive", True)
     switchCam(self, 0)
 
 def backCam(self):
+    visiontable.putNumber("activecam", 1)
+    visiontable.putBoolean("1isactive", True)
     switchCam(self, 1)
 
 def leftCam(self):
+    visiontable.putNumber("activecam", 2)
+    visiontable.putBoolean("2isactive", True)
     switchCam(self, 2)
 
 def rightCam(self):
+    visiontable.putNumber("activecam", 3)
+    visiontable.putBoolean("3isactive", True)
     switchCam(self, 3)
 
 #Universal Competition Functions
 def toggleBandwidth(self):
-    print(self)
     if self.vars["bandwidthreduced"]:
         normalBandwidthMode(self)
         self.vars["namedwidgets"]["toggleBandwidth"].setText("Reduce Bandwidth")
@@ -464,43 +472,23 @@ def toggleBandwidth(self):
         self.vars["namedwidgets"]["toggleBandwidth"].setText("Return To Normalcy!")
 
 def normalBandwidthMode(self):
-    staged = getStagedCams(self)
-    for camera in staged:
-        main = camera in mains
-        increaseBandwidth(camera, main)
+    cameras = self.cameras["match"]
+    for camera in cameras:
+        increaseBandwidth(camera)
     self.vars["bandwidthreduced"] = False
 
 def lowBandwidthMode(self):
-    staged = getStagedCams(self)
-    for camera in staged:
-        main = camera in mains
-        reduceBandwidth(camera, main)
+    cameras = self.cameras["match"]
+    for camera in cameras:
+        reduceBandwidth(camera)
     self.vars["bandwidthreduced"] = True
 
-def reduceBandwidth(camera, main=True):
-    if main:
-        camera.framerate = 10
-        camera.width = 91
-        camera.height = 68
-        camera.quality = 40
-    else:
-        camera.framerate = 8
-        camera.width = 34
-        camera.height = 45
-        camera.quality = 40
+def reduceBandwidth(camera):
+    camera.quality = 7
     camera.updateOverNetwork()
 
 def increaseBandwidth(camera, main=True):
-    if main:
-        camera.framerate = 20
-        camera.width = 365
-        camera.height = 274
-        camera.quality = 95
-    else:
-        camera.framerate = 15
-        camera.width = 137
-        camera.height = 182
-        camera.quality = 95
+    camera.quality = 28
     camera.updateOverNetwork()
 
 def updateStagedCams(self):

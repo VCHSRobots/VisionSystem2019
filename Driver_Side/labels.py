@@ -18,6 +18,8 @@ from PIL import ImageTk
 import fonts
 from visglobals import ip, visiontable
 
+failure_tolerance = 14
+
 def null(self):
     pass
 
@@ -61,15 +63,17 @@ class Camera(Widget):
         self.camnum = camnum
         self.active = True
         #TODO: Width and Height are magic numbers: replace them with a good default.
-        self.width = 500
-        self.height = 500
+        self.width = 365
+        self.height = 274
+        self.widthalias = 500
+        self.heightalias = 500
         self.color = True
         self.framerate = 10
         self.quantization = 8
         self.compression = 6
-        self.quality = 95
+        self.quality = 10
         self.maxsize = 50000
-        self.updateOverNetwork()
+        #self.updateOverNetwork()
         self.widget = tk.Label(root)
         #Makes a listener socket bound to this specific camera
         if sock:
@@ -90,9 +94,8 @@ class Camera(Widget):
         Places the latest image from the socket stream port aligning with the camnum
         """
         #Places an image from the networked camera on the label
-        print("attempting to update {}".format(self.camnum))
         image = self.getImgFromNetwork()
-        if self.failures > 4:
+        if self.failures > failure_tolerance:
             self.swapWithFailedCamera()
             return
         if not image:
@@ -157,13 +160,13 @@ class Camera(Widget):
         Converts a bytes jpeg image to the TKInter usable format
         """
         #Decompresses IOBytes image
-        img = zlib.decompress(img)
+        #img = zlib.decompress(img)
         #Turns image into bytes string
         img = io.BytesIO(img)
         #Opens image as if it were a file object
         img = Image.open(img)
         img = np.asarray(img)
-        img = imutils.resize(img, width = self.width, height = self.height)
+        img = imutils.resize(img, width = self.widthalias, height = self.heightalias)
         img = cv2.cvtColor(img, self.color)
         img = Image.fromarray(img)
         img = ImageTk.PhotoImage(img)
@@ -239,9 +242,7 @@ class FailedCamera(Widget):
         """
         Tests whether the camera being replaced has become avalible and puts it in place if it has
         """
-        print("Trying to connect")
         cangetimg = self.getImgWithTimeout()
-        print(cangetimg)
         if cangetimg:
             self.replaceWithWorkingCamera()
     
@@ -370,14 +371,11 @@ class RadioButtonParent(Widget):
             for button in self.buttons:
                 button.setOnGrid(row, column, columnspan=perbutton, rowspan=rowspan)
             column += perbutton
-        print("Unimplemented feature: Set parent radio button on grid")
 
     def ungrid(self):
         #Ungrids a single option from the set of RadioButton
         for button in self.buttons:
             button.ungrid()
-        print("Unimplemented")
-
 class RadioButton(Widget):
     def __init__(self, root, text, variable=tk.BooleanVar, onvalue=True, font=fonts.Button):
         self.root = root

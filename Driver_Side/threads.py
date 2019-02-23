@@ -3,6 +3,7 @@
 
 #import comsock
 import threading
+from networktables import NetworkTables as nt
 
 import menus
 
@@ -33,6 +34,8 @@ class SystemThread(threading.Thread):
     self.win = win
 
   def run(self):
+    while not nt.isConnected():
+      nt.startClient("10.44.15.2")
     win = self.win
     print(win.interface, self.lastinterface)
     print(win)

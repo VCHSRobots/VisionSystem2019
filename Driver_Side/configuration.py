@@ -22,8 +22,7 @@ global commandfuncs
 #Interface Configuration Functions
 def configureMainMenu(self):
   global configwascalled
-  self.addButton(text = "Start Match!", command = commands.startMatch, interface = "mainmenu")
-  self.addButton(text = "Exit", command = self.root.quit, interface = "mainmenu")
+  self.addButton(text = "Start Match!", command = commands.startMatchInterface, interface = "mainmenu")
   configwascalled["mainmenu"] = True
 
 def configureSettingsMenu(self):
@@ -92,8 +91,9 @@ def configureSplitCam(self):
 
 def configureOneCam(self):
   configureStacks(self, "onecam")
-  self.vars["staged"] = [0]
+  self.vars["staged"] = []
   self.vars["bandwidthreduced"] = False
+  commands.frontCam(self)
 
 def configureStacks(self, interface):
   setup = setups[interface]
@@ -101,7 +101,8 @@ def configureStacks(self, interface):
                   "showBack": commands.backCam, "showLeft": commands.leftCam, 
                   "showRight": commands.rightCam, "splitToMains": commands.splitToMains,
                   "splitToSides": commands.splitToSides, "splitToAll": commands.splitToAll,
-                  "startMatch": commands.sendStartSignal}
+                  "startMatch": commands.startMatchInterface, "configSystem": commands.configSystem,
+                  "sendStartSiginal": commands.sendSiginal}
   self.stacks = {}
   self.vars["namedwidgets"] = {}
   self.stacks["buttons"] = []

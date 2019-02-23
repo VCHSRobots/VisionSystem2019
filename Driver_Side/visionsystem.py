@@ -8,12 +8,17 @@ import time
 import tkinter as tk
 from networktables import NetworkTables as nt
 
+import autoload
 import menus
 import configuration
 import threads
 import commands
 import visglobals
 from visglobals import ip, piip, null, myadr, comsock, visiontable
+
+while not nt.isConnected():
+    nt.startClient("10.44.15.2")
+print("Connected to networktables")
 
 def testLoop(self):
     """
@@ -48,8 +53,10 @@ def startSystem():
     """
     Initiates the vision system application for the 2019 First Robotics Competition
     """
-    menustructure = {"Test": {"Do Nothing": null, "Switch Menus_*self*": commands.startMatch}}
+    menustructure = {"Test": {"Send Start Signal_*self*": commands.sendSignal, "Configure System_*self*": commands.configSystem}}
     win = tkwin.TkWin("Vision System", menustructure=menustructure)
+    #Sets camera values based on default json values
+    autoload.loadValues()
     #Sets the function to be called when window is initated
     systemthread = makeSystemThread(win)
     win.setThread(systemthread)

@@ -79,11 +79,11 @@ def splitcamMenu(self):
             self.timer.reset()
 
 def onecamMenu(self):
-    while self.interface == "splitcam":
+    while self.interface == "onecam":
         commands.updateStagedCams(self)
 
 def fourcamMenu(self):
-    while self.interface == "splitcam":
+    while self.interface == "fourcam":
         commands.updateStagedCams(self)
 
 def testMenu(self):
