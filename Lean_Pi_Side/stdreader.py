@@ -5,7 +5,7 @@ import time
 import subprocess as sub
 
 def openBashScript(scriptname):
-  f = open(scriptname+".bat")
+  f = open(scriptname+".sh")
   script = f.read()
   f.close()
   return script
