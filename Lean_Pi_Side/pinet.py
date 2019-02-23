@@ -25,12 +25,12 @@ GRAY = cv2.COLOR_BGR2GRAY
 cliip = "10.44.15.5"
 piip = "10.44.15.6"
 myadr = (piip, 5800)
-dwidth = 400
-dheight = 400
-defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
+dwidth = 100
+dheight = 100
+defaultcamvals = {"isactive": True, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quality": 40}
 default_match_time = 180
 #Camera value keys which need to be cast to integers
-intvals = ["width", "height", "compression", "quality"]
+intvals = ["width", "height", "quality"]
 robotip = "roborio-4415-frc.local"
 nt.initialize(robotip)
 table = nt.getTable("/vision")
@@ -40,8 +40,6 @@ def setupSenderSocket(socktype = UDP, timeout = .05):
   Sets up and returns a ready to use socket bound to the ip and port arguments
   """
   sock = socket.socket(socket.AF_INET, socktype)
-  sock.bind(myadr)
-  sock.settimeout(.05)
   return sock
 
 def setupListenerSocket(socktype = UDP, timeout = .05):
@@ -49,6 +47,9 @@ def setupListenerSocket(socktype = UDP, timeout = .05):
   Sets up and returns a ready to use socket bound to the ip and port arguments
   """
   sock = socket.socket(socket.AF_INET, socktype)
+  print(myadr)
+  sock.bind(myadr)
+  sock.settimeout(timeout)
   sock.settimeout(.05)
   return sock
   
@@ -61,15 +62,20 @@ def runSingleMatch(camnum):
   sock = setupSenderSocket()
   exportCamStream(sock, camnum, camera)
 
-def runSwappableMatch():
+def runSwappableMatch(timeout=180):
   sock = setupListenerSocket()
+  table.putBoolean("config", True)
   try:
-    camnums = configSingle(listener=sock)
+    camnums = configSwappableStream(sock)
   finally:
     sock.close()
   sock = setupSenderSocket()
-  exportSwappableStream(sock, camnums)
+  print(camnums)
+  exportSwappableStream(sock, camnums, timeout = timeout)
   
+"""
+Timeout does nothing
+"""
 def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype = UDP):
   #Camnums are the potential camera numbers to be switched to
   starttime = time.perf_counter()
@@ -78,37 +84,46 @@ def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype 
   lastimesincediag = 0
   framesent = 0
   totalsize = 0
-  activecam = table.getNumber("activecam", camnums[0])
+  activecam = int(table.getNumber("activecam", camnums[0]))
   if activecam in camnums:
-    camera = cv2.VideoCapture(activecam)
+    camera = cv2.VideoCapture(camnums.index(activecam))
   else:
     camera = cv2.VideoCapture(0)
-  while time.perf_counter()-starttime <= time:
+  print(camera, camera.grab())
+  while True:
+    if table.getBoolean("config", False):
+      try:
+        listener = setupListenerSocket()
+        camnums = configSwappableStream(listener)
+      finally:
+        listener.close()
     if activecam != table.getNumber("activecam", camnums[0]):
       camera.release()
-      activecam = table.getNumber("activecam", camnums[0])
+      activecam = int(table.getNumber("activecam", camnums[0]))
       if activecam in camnums:
-        camera = cv2.VideoCapture(activecam)
+        camera = cv2.VideoCapture(camnums.index(activecam))
       else:
+        activecam = int(camnums[0])
         camera = cv2.VideoCapture(0)
     camvals = pollCamVars(activecam)
-    if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
+    currenttime = time.perf_counter()
+    if camvals["isactive"] and currenttime-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
       size = exportImage(camera=camera, camnum=activecam, sock=sock, camvals=camvals, ip=cliip)
       if size == -1:
         continue
       totalsize += size
       framesent += 1
-      lastimesent = time.perf_counter()
-    if time.perf_counter()-lastimesincediag >= 10:
+      lastimesent = currenttime
+    if currenttime-lastimesincediag >= 10:
       bytespersec = totalsize/10
       fps = framesent/10
-      print("{0} frames sent at {1}fps. Average image size: {2}".format(framesent, fps, bytespersec*8/1000000))
+      print("{0} frames sent at {1}fps. Average Mb/sec: {2}".format(framesent, fps, bytespersec*8/1000000))
       framesent = 0
       totalsize = 0
-      lastimesincediag = time.perf_counter()
+      lastimesincediag = currenttime
       cv2.waitKey(1)
 
-def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
+def exportCamStream(sock, camnum, camera, socktype = UDP, timeout = 180):
   """
   Exports a stream of images from the given camera
   """
@@ -118,7 +133,7 @@ def exportCamStream(sock, camnum, camera, socktype = UDP, time = 180):
   lastimesincediag = 0
   framesent = 0
   totalsize = 0
-  while time.perf_counter()-starttime <= time:
+  while time.perf_counter()-starttime <= timeout:
     camvals = pollCamVars(camnum)
     #Casts certain numerical camera values to integer
     for key in intvals:
@@ -148,31 +163,38 @@ def exportImage(camera, camnum, sock, camvals=defaultcamvals, ip=cliip):
     return -1
   frame = processImg(frame, camvals)
   #Checks if size of image is bigger than the reciever buffer can handle
-  if sys.getsizeof(frame) > table.getNumber("{0}size".format(camnum), 50000):
-    defaultsize = table.getNumber("{0}size".format(camnum), 50000)
+  size = table.getNumber("{}size".format(camnum), 50000)
+  if sys.getsizeof(frame) > size:
+    defaultsize = size
     sizedif = sys.getsizeof(frame)-defaultsize
     table.putNumber("{0}overflow".format(camnum), sizedif) #Warns client about NetworkTables update if about to send an image larger than the default buffer
-    return #Skip sending frame until client confirms it can recieve the larger size
+    return -1#Skip sending frame until client confirms it can recieve the larger size
   return sock.sendto(frame, (cliip, camnum+5800))
         
 def processImg(img, camvals):
   """
   Processes an image from numpy array format to jpeg bytes blob
   """
+  if camvals["width"] <= 10:
+    camvals["width"] = 10
+  if camvals["height"] <= 10:
+    camvals["height"] = 10
   img = imutils.resize(img, width = camvals["width"], height = camvals["height"])
   img = cv2.cvtColor(img, camvals["color"])
   img = Image.fromarray(img)
   imgbytes = io.BytesIO()
-  img.save(imgbytes, format = "JPEG", quality=camvals["quality"])
+  img.save(imgbytes, format = "JPEG", quality = camvals["quality"])
   imgbytes = imgbytes.getvalue()
-  imgbytes = zlib.compress(imgbytes, camvals["compression"])
+  #imgbytes = zlib.compress(imgbytes, camvals["compression"])
   return imgbytes
 
-def recvWithTimeout(sock):
+def recvWithTimeout(sock, bufferlength = 400):
   try:
-    return sock.recv()
+    message = sock.recv(bufferlength)
   except socket.error:
-    return b""
+    message = b""
+  return message
+
 
 def configSwappableStream(listener):
   """
@@ -183,22 +205,26 @@ def configSwappableStream(listener):
   camnumstoremove = []
   sockmessage = b""
   started = False
-  while not started:
+  print("here")
+  while not started or not camnums:
     newcamnums = stdreader.scanForCameras()
     #Checks for and appends new cameras
     for camnum in newcamnums:
       if camnum not in camnums:
         camnums.append(camnum)
+        table.putBoolean("{}isactive".format(camnum), True)
     #Removes any unplugged cameras
     for camnum in camnums:
       if camnum not in newcamnums:
         camnumstoremove.append(camnum)
     for camnum in camnumstoremove:
       camnums.remove(camnum)
+      table.putBoolean("{}isactive".format(camnum), False)
     camnumstoremove = []
     #Listens for start signal
     sockmessage = recvWithTimeout(listener)
     started = sockmessage == b"start"
+  table.putBoolean("config", False)
   return camnums
 
 def configSingle(listener):
@@ -206,7 +232,7 @@ def configSingle(listener):
   camera = testCamnum(0)
   sockmessage = b""
   started = False
-  while not started and camera != None:
+  while not started or camera == None:
     camnums = stdreader.scanForCameras()
     if camera == None and camnums:
       camera = testCamnum(len(camnums)-1)
@@ -260,3 +286,5 @@ def pollTableVals(camnum, keys):
       vals[key] = table.getBoolean("{0}{1}".format(camnum, key), keys[key])
   return vals
   
+if __name__ == "__main__":
+    runSwappableMatch(timeout=180)
