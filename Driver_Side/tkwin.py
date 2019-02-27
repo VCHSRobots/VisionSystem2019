@@ -63,7 +63,6 @@ class TkWin:
     """
     Initiates the tkinter window while running the instance's set thread function
     """
-    print(self)
     self.thread.start()
     self.root.mainloop()
 

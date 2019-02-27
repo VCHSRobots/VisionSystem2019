@@ -42,7 +42,6 @@ def sendString(comsock, string, adr = piadr):
     logs.log("Message '{}' would have overflowed buffer of size {}. Sending aborted.".format(bytestring.decode(), settings["buffersize"]))
 
 def recvString(comsock, timeout = 0):
-  print("recieving string")
   try:
     if timeout:
       comsock.settimeout(timeout)

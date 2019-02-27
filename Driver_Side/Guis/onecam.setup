@@ -2,4 +2,5 @@
             {"text": "Cam1", "command": "showFront"}, 
             {"text": "Cam2", "command": "showBack"}, 
             {"text": "Cam3", "command": "showLeft"},
-            {"text": "Spare", "command": "showRight"}]}
+            {"text": "Spare", "command": "showRight"},
+            {"text": "Save Image", "command": "saveImage"}]}

@@ -34,11 +34,7 @@ class SystemThread(threading.Thread):
     self.win = win
 
   def run(self):
-    while not nt.isConnected():
-      nt.startClient("10.44.15.2")
     win = self.win
-    print(win.interface, self.lastinterface)
-    print(win)
     while True:
       if self.win.interface != self.lastinterface:
         matchfunctions[self.win.interface](self.win)

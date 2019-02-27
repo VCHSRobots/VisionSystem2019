@@ -102,7 +102,7 @@ def configureStacks(self, interface):
                   "showRight": commands.rightCam, "splitToMains": commands.splitToMains,
                   "splitToSides": commands.splitToSides, "splitToAll": commands.splitToAll,
                   "startMatch": commands.startMatchInterface, "configSystem": commands.configSystem,
-                  "sendStartSiginal": commands.sendSiginal}
+                  "sendStartSiginal": commands.sendSignal, "saveImage": commands.saveImage}
   self.stacks = {}
   self.vars["namedwidgets"] = {}
   self.stacks["buttons"] = []
@@ -111,7 +111,6 @@ def configureStacks(self, interface):
   copyMatchCameras(self, interface)
   #Caches nedded widgets in their proper stack location
   for buttonargs in buttons:
-    print(self.stacks)
     if not buttonargs["command"] in commandfuncs:
       continue
     button = self.addButton(text = buttonargs["text"], command=commandfuncs[buttonargs["command"]], interface=interface, rewidget=True)

@@ -462,6 +462,10 @@ def rightCam(self):
     visiontable.putBoolean("3isactive", True)
     switchCam(self, 3)
 
+def saveImage(self):
+    for camnum in self.vars["staged"]:
+        self.cameras["match"][camnum].save = True
+        
 #Universal Competition Functions
 def toggleBandwidth(self):
     if self.vars["bandwidthreduced"]:

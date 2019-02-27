@@ -33,6 +33,7 @@ def null():
   pass
 
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
+rioip = "roboRIO-4415-frc.local"
 ip = "10.44.15.5"
 piip = "10.44.15.6"
 piadr = (piip, 5800)

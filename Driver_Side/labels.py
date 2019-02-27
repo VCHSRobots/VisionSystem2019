@@ -88,6 +88,8 @@ class Camera(Widget):
         self.ind = ind
         self.window = window
         self.interface = interface
+        #Whether the next image from the camera will be saved
+        self.save = False
         
     def updateImgOnLabel(self):
         """
@@ -166,6 +168,9 @@ class Camera(Widget):
         #Opens image as if it were a file object
         img = Image.open(img)
         img = np.asarray(img)
+        if self.save:
+            saveImage(img)
+            self.save = False
         img = imutils.resize(img, width = self.widthalias, height = self.heightalias)
         img = cv2.cvtColor(img, self.color)
         img = Image.fromarray(img)
@@ -187,6 +192,8 @@ class Camera(Widget):
         self.sock.settimeout(timeout)
         self.__timeout = timeout
 
+def saveImage(image):
+    cv2.imwrite("{}.jpg".format(time.ctime()), image)
 
 class FailedCamera(Widget):
     #Camera fallback if a number cannot connect

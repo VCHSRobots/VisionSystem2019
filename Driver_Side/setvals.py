@@ -107,11 +107,10 @@ def getCamNums(nums):
       print(">> Invalid camera number {}".format(camnum))
   return cameras
 
-commands = ["get", "set", "load"]
-nt.startClient("10.44.15.2")
-autoConnect()
-
 if __name__ == "__main__":
+  commands = ["get", "set", "load"]
+  nt.startClient("10.44.15.2")
+  autoConnect()
   while True:
     if not nt.isConnected():
       autoConnect()

@@ -68,7 +68,6 @@ def multiviewMenu(self):
             timeleft = 180
 
 def splitcamMenu(self):
-    print("here")
     timeleft = 180
     while self.interface == "splitcam":
         if timeleft > 0:
@@ -107,15 +106,11 @@ def switchUi(self, guiname):
     """
     Configures the window for the given the guifile to be setup and any stray widgets to clear
     """
-    print(0)
     self.tearDown()
     time.sleep(5)
-    print(1)
     #Configures window for the new gui
     if not config.configwascalled[guiname]:
         config.configfunctions[guiname](self)
-        print(2)
     #Grids gui widgets
     self.processGuiMap(guimaps[guiname], guiname)
-    print(3)
     self.interface = guiname
