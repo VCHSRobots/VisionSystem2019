@@ -1,0 +1,9 @@
+Be sure only one instance of the program is running at a time or you will recieve a socket error
+
+The system will automatically sends the start signal when you click 'Run Match!', but if you can't see any cameras, click 'Mode' on the app's menu bar and hit 'Send Start Signal' there.
+
+If you need to adjust which cameras are plugged in, click Mode in the menu bar and select "Configure System". Refer to above instructions to send start signal, which will return the system to normal function.
+
+If the system hangs on startup, make sure you are connected to NetworkTables, since it will not continue until it successfully connects. 
+If you must use the system without NetworkTables, put # before lines 19-21 in Driver_Side/visionsystem.py. Also check if robotip is set correctly in Driver_Side/visglobals.py.
+Note: You cannot swap cameras or adjust camera quality without NetworkTables.

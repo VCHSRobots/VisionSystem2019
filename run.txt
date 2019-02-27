@@ -1,0 +1,5 @@
+Run Driver_Side/startvisionsystem.bat
+
+You can create a shortcut to this file on your desktop to make launching easier. You can rename the terminal window (but not the system window) which is opened by renaming the shortcut.
+
+If you encounter any issues, refer to debug.py
