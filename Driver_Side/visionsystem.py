@@ -18,10 +18,6 @@ from visglobals import ip, piip, null, myadr, comsock, visiontable, rioip
 
 nt.startClient(rioip)
 
-while not nt.isConnected():
-    nt.startClient(rioip)
-print("Connected to networktables")
-
 def testLoop(self):
     """
     Thread fucntion to be called by the tkinter class
@@ -67,6 +63,7 @@ def startSystem():
     configuration.configureMainMenu(win)
     win.processGuiMap("mainmenu")
     win.runWin()
+    forceNtConnection()
     
 def makeSystemThread(win):
     """
@@ -86,6 +83,11 @@ def getActiveCams(numrange):
         if isactive:
             actives.append(num)
     return actives
+
+def forceNtConnection():
+    while not nt.isConnected():
+        nt.startClient(rioip)
+        print("Connected to networktables")
 
 def sendStartSignal():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
