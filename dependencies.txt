@@ -1,0 +1,7 @@
+Make sure Python 3 is installed and can be executed from the command line. If you cannot run 'python' in the command line, reinstall Python 3 with 'add to PATH' checked.
+
+Use 'python -m pip install *module*' to install:
+    opencv-python
+    imutils
+    pillow
+    pyfrc

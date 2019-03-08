@@ -88,6 +88,11 @@ def getActiveCams(numrange):
             actives.append(num)
     return actives
 
+def forceNtConnection():
+    while not nt.isConnected():
+        nt.startClient(rioip)
+        print("Connected to networktables")
+
 def sendStartSignal():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.sendto(b"i", (piip, 5800))

@@ -1,0 +1,2 @@
+To tune system compression, framerates, etc, go to Driver_Side/Nt_Values/defaultvalues.json and change the desired values
+These values only adjust the startup defaults. Their qualities and framerates will be overridden by the 'Lower Bandwidth' and 'Restore Bandwidth' buttons. To adjust those, go to the reduceBandwidth and increaseBandwidth functions in Driver_Side/commands.py and adjust the camera properties.

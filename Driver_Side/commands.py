@@ -498,10 +498,12 @@ def lowBandwidthMode(self):
 
 def reduceBandwidth(camera):
     camera.quality = 7
+    camera.framerate = 24
     camera.updateOverNetwork()
 
 def increaseBandwidth(camera, main=True):
     camera.quality = 28
+    camera.framerate = 24
     camera.updateOverNetwork()
 
 def updateStagedCams(self):
