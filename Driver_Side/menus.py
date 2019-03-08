@@ -96,10 +96,16 @@ def testMenu(self):
         lastmatchcams = self.cameras["test"]
         print("here")
 
+def plaincompMenu(self):
+    while self.interface == "plaincomp":
+        commands.getStagedCam(self)
+        commands.updateStagedCams(self)
+
 matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
                 "onecammatch": null, "multiview": multiviewMenu,   
                 "test": testMenu, "splitcam": splitcamMenu,
-                "onecam": onecamMenu, "fourcam": fourcamMenu}
+                "onecam": onecamMenu, "fourcam": fourcamMenu,
+                "plaincomp": plaincompMenu}
 
 #Ui Management Functions
 def switchUi(self, guiname):

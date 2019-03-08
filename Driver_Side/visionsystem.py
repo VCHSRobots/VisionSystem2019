@@ -18,10 +18,6 @@ from visglobals import ip, piip, null, myadr, comsock, visiontable, rioip
 
 nt.startClient(rioip)
 
-while not nt.isConnected():
-    nt.startClient(rioip)
-print("Connected to networktables")
-
 def testLoop(self):
     """
     Thread fucntion to be called by the tkinter class
@@ -59,7 +55,6 @@ def startSystem():
     win = tkwin.TkWin("Vision System", menustructure=menustructure)
     #Sets camera values based on default json values
     autoload.loadValues()
-    print("Here")
     #Sets the function to be called when window is initated
     systemthread = makeSystemThread(win)
     win.setThread(systemthread)
@@ -67,7 +62,13 @@ def startSystem():
     configuration.configureMainMenu(win)
     win.processGuiMap("mainmenu")
     win.runWin()
+    forceConnectNetworkTables()
     
+def forceConnectNetworkTables():
+    while not nt.isConnected():
+        nt.startClient(rioip)
+    print("Connected to networktables")
+
 def makeSystemThread(win):
     """
     Thread fucntion to be called by the tkinter class

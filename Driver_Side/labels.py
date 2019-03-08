@@ -65,8 +65,8 @@ class Camera(Widget):
         #TODO: Width and Height are magic numbers: replace them with a good default.
         self.width = 365
         self.height = 274
-        self.widthalias = 500
-        self.heightalias = 500
+        self.widthalias = 1000
+        self.heightalias = 700
         self.color = True
         self.framerate = 10
         self.quantization = 8

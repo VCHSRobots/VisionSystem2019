@@ -13,7 +13,7 @@ from visglobals import guimaps, visiontable, camnamenums, setups, competitionint
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
-configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False, "splitcam": False}
+configwascalled = {"mainmenu": False, "settings": False, "match": False, "onecammatch": False, "multiview": False, "test": False, "splitcam": False, "plaincomp": False}
 #Arguments which need to be converted from integers to be passed to getWidgetFromName
 intargs = ["camnum", "length", "height", "start?", "end?"]
 camerasmade = False
@@ -118,11 +118,17 @@ def configureStacks(self, interface):
     #Uses the the function's name as a string by which the widget can be referred to
     self.vars["namedwidgets"][buttonargs["command"]] = button
 
+def configurePlainComp(self):
+  global configwascalled
+  configureStacks(self, "plaincomp")
+  commands.getStagedCam(self)
+  self.vars["bandwidthreduced"] = False
+  configwascalled["plaincomp"] = True
 
 configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, 
                   "multiview": configureMultiview, "test": configureTest, 
                   "fourcam": configureFourCam, "splitcam": configureSplitCam, 
-                  "onecam": configureOneCam}
+                  "onecam": configureOneCam, "plaincomp": configurePlainComp}
 
 #Supplementary Configuration Functions
 def configureMatchCameras(self, neededcams = (0, 1, 2, 3), recams=False):

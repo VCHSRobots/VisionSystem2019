@@ -442,6 +442,15 @@ def switchCam(self, camnum):
     self.gridWidget(camera, defaultlocation[0], defaultlocation[1], defaultlocation[2], defaultlocation[3])
     self.vars["staged"] = [camnum]
 
+def getStagedCam(self):
+    """
+    Gets staged camera from networktables and responds accordingly
+    """
+    staged = visiontable.getNumber("activecam", 0)
+    if self.vars[staged][0] != staged:
+        visiontable.putBoolean("{}isactive".format(staged), True)
+        switchCam(self, staged)
+
 def frontCam(self):
     visiontable.putNumber("activecam", 0)
     visiontable.putBoolean("0isactive", True)

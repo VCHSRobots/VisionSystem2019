@@ -51,7 +51,8 @@ widgettypes = ["camera", "localcamera",
 mapnames = ["mainmenu", "settings", 
             "onecammatch", "multiview", 
             "test", "splitcam",
-            "onecam", "fourcam"]
+            "onecam", "fourcam",
+            "plaincomp"]
 
 #Loads span parameters for column griding
 stacknames = ["configurable"]
