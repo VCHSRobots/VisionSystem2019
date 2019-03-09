@@ -20,17 +20,6 @@ RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
 
 class CamHandler(BaseHTTPRequestHandler):
-  def __init__(self):
-    global camera
-    global width
-    global height
-    self.camnums = scanForCameras()
-    self.active = visiontable.getNumber("isactive", self.camnums[0])
-    camera = cv2.VideoCapture(self.active)
-    width = int(visiontable.getNumber("width", width))
-    height = int(visiontable.getNumber("height", height))
-    setCameraValues()
-
   def do_GET(self):
     if self.path.endswith('.mjpg'):
       self.send_response(200)
@@ -38,8 +27,8 @@ class CamHandler(BaseHTTPRequestHandler):
       self.end_headers()
       while True:
         try:
-          self.checkIfCameraChanged()
-          rc, img = self.camera.read()
+          checkIfCameraChanged()
+          rc, img = camera.read()
           if not rc:
             continue
           jpg = processImage(img)
@@ -58,26 +47,25 @@ class CamHandler(BaseHTTPRequestHandler):
       self.send_header('Content-type','text/html')
       self.end_headers()
       self.wfile.write('<html><head></head><body>')
-      self.wfile.write('<img src="http://127.0.0.1:8080/cam.mjpg"/>')
+      self.wfile.write('<img src="http://10.44.15.6:5800/cam.mjpg"/>')
       self.wfile.write('</body></html>')
       return
-
-  #For this to work properly, the cameras must be plugged in in order
-  def checkIfCameraChanged(self):
-    global camera
-    tablenum = visiontable.getNumber("isactive", self.camnums[0])
-    if self.active != tablenum:
-      if tablenum in self.camnums:
-        camera.release()
-        camera = cv2.VideoCapture(tablenum)
-        self.active = tablenum
-      camera.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, int(visiontable.getNumber("width", dwidth)))
-      camera.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, int(visiontable.getNumber("height", dheight)))
-
 
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
   """Handle requests in a separate thread."""
 
+#For this to work properly, the cameras must be plugged in in order
+def checkIfCameraChanged():
+  global camera
+  global active
+  tablenum = visiontable.getNumber("isactive", camnums[0])
+  if active != tablenum:
+    if tablenum in camnums:
+      camera.release()
+      camera = cv2.VideoCapture(tablenum)
+      active = tablenum
+    setCameraSettings()
+    
 def updateCameraSettings():
   global width
   global height
@@ -96,7 +84,7 @@ def setCameraSettings():
   camera.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH, width)
   camera.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT, height)
 
-def processImg(img):
+def processImage(img):
   """
   Processes an image from numpy array format to jpeg bytes blob
   """
@@ -107,6 +95,16 @@ def processImg(img):
 
 def main():
   global camera
+  global width
+  global height
+  global active
+  global camnums
+  camnums = scanForCameras()
+  active = visiontable.getNumber("isactive", camnums[0])
+  camera = cv2.VideoCapture(active)
+  width = int(visiontable.getNumber("width", width))
+  height = int(visiontable.getNumber("height", height))
+  setCameraSettings()
   try:
     server = ThreadedHTTPServer(('localhost', 5800), CamHandler)
     print("server started")
