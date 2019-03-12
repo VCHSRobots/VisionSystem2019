@@ -3,7 +3,6 @@
 
 #Module Imports
 import threading
-import networktables
 import json
 import timer
 import re #Used for string processing
@@ -13,23 +12,24 @@ import tkinter as tk
 #Local Imports
 import labels
 import configuration as config
-from visglobals import myadr, piadr, widgettypes, visiontable, guimaps, stackmaps, null
+from visglobals import myip, piadr, widgettypes, visiontable, guimaps, stackmaps, null
 
 #Globals
-#Ip is configured to Holiday's laptop... change if neccecary!
-ip = "10.44.15.41"
 NOARG = "*None*"
 GLOBAL = "*Global*"
 SELF = "*Self*"
 
 class TkWin:
-  def __init__(self, name, width = 100, height = 100, menustructure = {}):
+  def __init__(self, name, width = 800, height = 600, menustructure = {}, ip = myip, xloc = 1915, yloc = 0):
     #TODO width and height are magic numbers
     self.name = name
     #Sets up the window root
     self.root = tk.Tk()
     self.root.title = name #Sets the title of the window as the user sees it
-    self.root.geometry("{0}x{1}".format(width, height))
+    self.root.geometry("{}x{}+{}+{}".format(width, height, xloc, yloc))
+    self.fullscreen = False
+    self.root.bind("<F11>", self.toggleFullscreen)
+    self.root.bind("<Escape>", self.escapeFullscreen)
     #Using single widget lists is depreciated - use the widgets dictionary instead
     self.cameras = {}
     self.localcameras = {}
@@ -58,6 +58,7 @@ class TkWin:
     self.interface = "mainmenu"
     self.timer = timer.Timer()
     self.camerasconfiged = False
+    self.ip = ip
 
   def runWin(self):
     """
@@ -65,6 +66,18 @@ class TkWin:
     """
     self.thread.start()
     self.root.mainloop()
+
+  def toggleFullscreen(self, _):
+    self.fullscreen = not self.fullscreen
+    self.root.attributes("-fullscreen", self.fullscreen)
+
+  def activateFullscreen(self, _):
+    self.fullscreen = True
+    self.root.attributes("-fullscreen", True)
+
+  def escapeFullscreen(self, _):
+    self.fullscreen = False
+    self.root.attributes("-fullscreen", False)
 
   def setThread(self, func):
     """
@@ -90,7 +103,7 @@ class TkWin:
     if interface not in self.cameras:
       self.cameras[interface] = []
     ind = len(self.cameras[interface]) #Camera index to swap in case of failure
-    camera = labels.Camera(camnum, self.root, self, interface, ind)
+    camera = labels.Camera(camnum, self.root, self, interface, ind, ip=self.ip)
     self.cameras[interface].append(camera)
     if rewidget:
       return camera

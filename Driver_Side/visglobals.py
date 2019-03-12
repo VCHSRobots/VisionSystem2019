@@ -6,24 +6,21 @@ import socket
 import time
 from networktables import NetworkTables as nt
 
-competitioninterface = "onecam"
+competitioninterface = "plaincomp"
 
 def openGuiFile(name):
-  print(name)
   guifile = open("./Guis/{0}.gui".format(name))
   gui = json.load(guifile)
   guifile.close()
   return gui
 
 def openStackFile(name):
-  print(name)
   guifile = open("./Guis/{0}.stack".format(name))
   gui = json.load(guifile)
   guifile.close()
   return gui
 
 def openSetupFile(name):
-  print(name)
   guifile = open("./Guis/{0}.setup".format(name))
   gui = json.load(guifile)
   guifile.close()
@@ -34,7 +31,9 @@ def null():
 
 #Ip is configured to Holiday's laptop and pi... change if neccecary!
 rioip = "roboRIO-4415-frc.local"
+#Duplicate variables for backward compatibility
 ip = "10.44.15.5"
+myip = "10.44.15.5"
 piip = "10.44.15.6"
 piadr = (piip, 5800)
 myadr = (ip, 5800)
@@ -60,7 +59,7 @@ guimaps = {name: openGuiFile(name) for name in mapnames}
 stackmaps = {name: openStackFile(name) for name in stacknames}
 
 #Loads files which define the contents of a window's stack cache widgets which are gridded accoring to the above stack rules
-setupnames = ["splitcam", "onecam", "fourcam"]
+setupnames = ["splitcam", "onecam", "fourcam", "plaincomp"]
 setups = {name: openSetupFile(name) for name in setupnames}
 
 #Camera numbers by their name

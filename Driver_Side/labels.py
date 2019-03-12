@@ -16,7 +16,7 @@ from PIL import ImageTk
 
 #Local Imports
 import fonts
-from visglobals import ip, visiontable
+from visglobals import myip, visiontable
 
 failure_tolerance = 14
 
@@ -57,7 +57,7 @@ class Widget:
 
 class Camera(Widget):
     #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
-    def __init__(self, camnum, root, window, interface, ind, sock = None, timeout = .05):
+    def __init__(self, camnum, root, window, interface, ind, sock = None, timeout = .05, ip = myip):
         #Camnum will match up with camnum on robot network
         self.root = root
         self.camnum = camnum
@@ -65,8 +65,8 @@ class Camera(Widget):
         #TODO: Width and Height are magic numbers: replace them with a good default.
         self.width = 365
         self.height = 274
-        self.widthalias = 1000
-        self.heightalias = 700
+        self.widthalias = 800
+        self.heightalias = 510
         self.color = True
         self.framerate = 10
         self.quantization = 8
@@ -83,6 +83,7 @@ class Camera(Widget):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((ip, camnum+5800))
             self.sock.settimeout(timeout)
+        self.timeout = timeout
         self.location = ()
         self.failures = 0
         self.ind = ind
@@ -90,6 +91,7 @@ class Camera(Widget):
         self.interface = interface
         #Whether the next image from the camera will be saved
         self.save = False
+        self.frames = 0
         
     def updateImgOnLabel(self):
         """
@@ -107,6 +109,10 @@ class Camera(Widget):
             self.failures = 0
         self.widget.config(image=image)
         self.widget.image = image
+        self.frames += 1
+        # if self.frames >= self.flushrate:
+        #     self.flushSock()
+        #     self.frames = 0
     
     def swapWithFailedCamera(self):
         camera = FailedCamera(self.camnum, self.root, self.window, self.interface, self.ind, self.sock)
@@ -171,33 +177,21 @@ class Camera(Widget):
         if self.save:
             saveImage(img)
             self.save = False
-        img = imutils.resize(img, width = self.widthalias, height = self.heightalias)
         img = cv2.cvtColor(img, self.color)
         img = Image.fromarray(img)
+        img = img.resize((self.widthalias, self.heightalias), Image.NEAREST)
         img = ImageTk.PhotoImage(img)
         return img
 
     def shutdown(self):
         pass
 
-    @property
-    def timeout(self):
-        self.sock.settimeout(self.timeout)
-        return self.timeout
-
-    @timeout.setter
-    def timeout(self, timeout):
-        if timeout < 0:
-            timeout = None
-        self.sock.settimeout(timeout)
-        self.__timeout = timeout
-
 def saveImage(image):
     cv2.imwrite("{}.jpg".format(time.ctime()), image)
 
 class FailedCamera(Widget):
     #Camera fallback if a number cannot connect
-    def __init__(self, camnum, root, window, interface, ind, sock = None):
+    def __init__(self, camnum, root, window, interface, ind, sock = None, ip = myip):
         #Camnum will match up with camnum on robot network
         self.root = root
         self.camnum = camnum
@@ -218,6 +212,7 @@ class FailedCamera(Widget):
         self.quality = 95
         self.maxsize = 5000000
         self.location = ()
+        self.ip = ip
         #Makes a listener socket bound to this specific camera
         if sock:
             self.sock = sock
@@ -254,7 +249,7 @@ class FailedCamera(Widget):
             self.replaceWithWorkingCamera()
     
     def replaceWithWorkingCamera(self):
-        camera = Camera(camnum=self.camnum, root=self.root, window=self.window, ind=self.ind, interface=self.interface, sock=self.sock)
+        camera = Camera(camnum=self.camnum, root=self.root, window=self.window, ind=self.ind, interface=self.interface, sock=self.sock, ip=self.ip)
         self.window.cameras[self.interface].remove(self)
         self.window.cameras[self.interface].insert(self.ind, camera)
         self.window.replaceWidget(self, camera)

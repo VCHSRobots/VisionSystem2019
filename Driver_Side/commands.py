@@ -447,7 +447,7 @@ def getStagedCam(self):
     Gets staged camera from networktables and responds accordingly
     """
     staged = visiontable.getNumber("activecam", 0)
-    if self.vars[staged][0] != staged:
+    if self.vars["staged"][0] != staged:
         visiontable.putBoolean("{}isactive".format(staged), True)
         switchCam(self, staged)
 

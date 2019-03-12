@@ -121,6 +121,7 @@ def configureStacks(self, interface):
 def configurePlainComp(self):
   global configwascalled
   configureStacks(self, "plaincomp")
+  self.vars["staged"] = [0]
   commands.getStagedCam(self)
   self.vars["bandwidthreduced"] = False
   configwascalled["plaincomp"] = True
