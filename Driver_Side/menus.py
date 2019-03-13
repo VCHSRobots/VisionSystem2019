@@ -20,38 +20,16 @@ matchtime = 180
 #Functions to be called when a menu is invoked
 def mainMenu(self):
     """
-    Main Menu Interface
+    Main Menu Loop
+    Does nothing
     """
     while self.interface == "mainmenu":
         pass
 
-def settingsMenu(self):
-    """
-    Main Menu Interface
-    """
-    while self.interface == "settings":
-        pass
-
-"""
-def matchMenu(self):
-    ""
-    Main Menu Interface
-    ""
-    if not config.configwascalled["match"]:
-        config.configureMatchInterfaces(self)
-    if settings["matchtype"] == "multiview":
-        switchUi(self, "multiview")
-    elif settings["matchtype"] == "onecammatch":
-        switchUi(self, "onecammatch")
-    commands.startMatch(self)
-    if settings["matchtype"] == "multiview":
-        self.interface = "multiview"
-        multiviewMenu(self)
-"""
-
 def multiviewMenu(self):
     """
-    Multiview Menu Interface
+    Multiview Menu Loop
+    Updates cameras and keeps a timer running on them
     """
     starttime = time.perf_counter()
     timeleft = 180
@@ -68,6 +46,10 @@ def multiviewMenu(self):
             timeleft = 180
 
 def splitcamMenu(self):
+    """
+    Splitcam Menu Interface
+    Allows the user to split one camera display into several smaller camera displays
+    """
     timeleft = 180
     while self.interface == "splitcam":
         if timeleft > 0:
@@ -78,6 +60,11 @@ def splitcamMenu(self):
             self.timer.reset()
 
 def onecamMenu(self):
+    """
+    Onecam Menu Interface
+    Displays one camera that can be swapped out
+    Plaincomp is much more efficent at this
+    """
     while self.interface == "onecam":
         commands.updateStagedCams(self)
 
@@ -98,25 +85,11 @@ def testMenu(self):
 
 def plaincompMenu(self):
     while self.interface == "plaincomp":
-        commands.getStagedCam(self)
-        commands.updateStagedCams(self)
+        self.switchToStagedCam()
+        self.cameras["match"][0].updateImgOnLabel()
 
 matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
                 "onecammatch": null, "multiview": multiviewMenu,   
                 "test": testMenu, "splitcam": splitcamMenu,
                 "onecam": onecamMenu, "fourcam": fourcamMenu,
                 "plaincomp": plaincompMenu}
-
-#Ui Management Functions
-def switchUi(self, guiname):
-    """
-    Configures the window for the given the guifile to be setup and any stray widgets to clear
-    """
-    self.tearDown()
-    time.sleep(5)
-    #Configures window for the new gui
-    if not config.configwascalled[guiname]:
-        config.configfunctions[guiname](self)
-    #Grids gui widgets
-    self.processGuiMap(guimaps[guiname], guiname)
-    self.interface = guiname

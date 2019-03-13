@@ -1,0 +1,7 @@
+**.pyc
+**.un~
+**.*~
+.vscode/**
+__pycache__/**
+Test_Images/*
+Test_Code/*

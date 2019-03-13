@@ -25,10 +25,11 @@ GRAY = cv2.COLOR_BGR2GRAY
 cliip = "10.44.15.5"
 piip = "10.44.15.6"
 myadr = (piip, 5800)
-dwidth = 100
-dheight = 100
-defaultcamvals = {"isactive": True, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quality": 40}
+dwidth = 300
+dheight = 400
+defaultcamvals = {"isactive": True, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quality": 28}
 default_match_time = 180
+failure_tolerance = 8
 #Camera value keys which need to be cast to integers
 intvals = ["width", "height", "quality"]
 robotip = "roborio-4415-frc.local"
@@ -47,7 +48,6 @@ def setupListenerSocket(socktype = UDP, timeout = .05):
   Sets up and returns a ready to use socket bound to the ip and port arguments
   """
   sock = socket.socket(socket.AF_INET, socktype)
-  print(myadr)
   sock.bind(myadr)
   sock.settimeout(timeout)
   sock.settimeout(.05)
@@ -84,6 +84,7 @@ def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype 
   lastimesincediag = 0
   framesent = 0
   totalsize = 0
+  failures = 0
   activecam = int(table.getNumber("activecam", camnums[0]))
   if activecam in camnums:
     camera = cv2.VideoCapture(camnums.index(activecam))
@@ -98,6 +99,7 @@ def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype 
       finally:
         listener.close()
     if activecam != table.getNumber("activecam", camnums[0]):
+      failures = 0
       camera.release()
       activecam = int(table.getNumber("activecam", camnums[0]))
       if activecam in camnums:
@@ -105,12 +107,21 @@ def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype 
       else:
         activecam = int(camnums[0])
         camera = cv2.VideoCapture(0)
+    if failures > failure_tolerance:
+      camnums.remove(activecam)
+      if camnums:
+        activecam = camnums[0]
+      else:
+        camnums = configSwappableStream()
     camvals = pollCamVars(activecam)
     currenttime = time.perf_counter()
     if camvals["isactive"] and currenttime-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
       size = exportImage(camera=camera, camnum=activecam, sock=sock, camvals=camvals, ip=cliip)
       if size == -1:
+        failures += 1
         continue
+      if failures > 0:
+        failures = 0
       totalsize += size
       framesent += 1
       lastimesent = currenttime

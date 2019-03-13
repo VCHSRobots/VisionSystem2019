@@ -12,7 +12,8 @@ import tkinter as tk
 #Local Imports
 import labels
 import configuration as config
-from visglobals import myip, piadr, widgettypes, visiontable, guimaps, stackmaps, null
+#Safe to import in this method since visglobals is a small file I coded myself
+from visglobals import *
 
 #Globals
 NOARG = "*None*"
@@ -59,6 +60,9 @@ class TkWin:
     self.timer = timer.Timer()
     self.camerasconfiged = False
     self.ip = ip
+    self.methodnames = {}
+    #Binds object method names to strings so they could be reffered to before object creation
+    self.bindMethodNames()
 
   def runWin(self):
     """
@@ -94,6 +98,14 @@ class TkWin:
     processMenuHierarchy(self.toplevel, self.menus, self)
     self.root.config(menu=self.toplevel)
 
+  #UI functions
+  def startMatchInterface(self):
+    """
+    Sends the Vision System start signal for a competition match
+    """
+    self.switchUi(competitioninterface)
+    sendStartSignal()
+
   #Widget Functions
   def addCamera(self, camnum, interface="match", rewidget=False):
     """
@@ -108,7 +120,7 @@ class TkWin:
     if rewidget:
       return camera
 
-  #Depreciated
+  #Unused test function
   def addLocalCam(self, camnum, interface="mainmenu", rewidget=False):
     """
     Local variant of addCam
@@ -335,7 +347,7 @@ class TkWin:
     """
     self.active = False
 
-  #Depreciated in favor of several functions under configuration.py
+  #Unused in favor of several functions under configuration.py
   def pollForCams(self, camrange):
     """
     Checks for active cams on the network
@@ -377,6 +389,384 @@ class TkWin:
     for cam in self.localcameras:
       cam.shutdown()
   
+  def copyMatchCameras(self, interface):
+    """
+    Copies the cameras in the match interface to the specified interface
+    """
+    #Initalizes list for the given interface
+    self.cameras[interface] = []
+    if "match" in self.cameras:
+      #Adds cameras from match interface to specified interface
+      for camera in self.cameras["match"]:
+        self.cameras[interface].append(camera)
+
+  def bindMethodNames(self):
+      self.methodnames = {"runWin": self.runWin, "toggleFullscreen": self.toggleFullscreen, 
+                "activateFullscreen": self.activateFullscreen, "escapeFullscreen": self.escapeFullscreen, 
+                "setThread": self.setThread, "initMenuSystem": self.initMenuSystem, 
+                "startMatchInterface": self.startMatchInterface, "addCamera": self.addCamera, 
+                "addEntry": self.addEntry, "addButton": self.addButton, 
+                "addCheckbox": self.addCheckbox, "addRadioButton": self.addRadioButton, 
+                "addCombobox": self.addCombobox, "addListbox": self.addListbox, 
+                "addText": self.addText, "addScale": self.addScale, 
+                "gridWidget": self.gridWidget, "ungridWidget": self.ungridWidget,
+                "replaceWidget": self.replaceWidget, "processGuiStack": self.processGuiStack, 
+                "processGuiMap": self.processGuiMap, "getWidgetFromName": self.getWidgetFromName, 
+                "switchUi": self.switchUi, "tearDown": self.tearDown, 
+                "emergencyShutdown": self.emergencyShutdown, "killLoop": self.killLoop,
+                "copyMatchCameras": self.copyMatchCameras}
+
+class SwitchingWindow(TkWin):
+  def switchToStagedCam(self):
+    """
+    Switches the camera number of the active camera widget to the number staged in networktables
+    """
+    staged = visiontable.getNumber("activecam", 0)
+    if self.vars["staged"][0] != staged:
+        #Tells the pi the camera is active for backward compatibility
+        visiontable.putBoolean("{}isactive".format(staged), True)
+        self.cameras["match"][0].changeCamnum(staged)
+        self.vars[staged] = [staged]
+
+#Multiview interface that never worked
+class MultiviewWindow(TkWin):
+  mains = [0, 1]
+  sides = [2, 3]
+
+  def putToDash(self, textbox, value):
+    if textbox == "staged":
+        staged = ""
+        #Lists staged cameras in a gramatically correct manner
+        for ind, val in enumerate(value):
+            if ind == 0:
+                if len(value) > 2:
+                    staged += camnames[val] + ", "
+                elif len(value) == 1:
+                    staged += camnames[val]
+                else:
+                    staged += camnames[val] + " "
+            elif ind == len(value)-1:
+                staged += "and " + camnames[val]
+            else:
+                staged += camnames[val] + ", "
+        if len(self.vars["staged"]) > 1:
+            text = "The {} cameras are staged".format(staged)
+        else:
+            text = "The {} camera is staged".format(staged)
+        self.textboxes["multiview"][0].setValue(text)
+    elif textbox == "active":
+        if value == True:
+            active = "active"
+        elif value == False:
+            active = "not active"
+        plural = len(self.vars["staged"]) > 1
+        if plural:
+            text = "The staged cameras are {}".format(active)
+        else:
+            text = "The staged camera is {}".format(active)
+        self.textboxes["multiview"][1].setValue(text)
+        if value:
+            if plural:
+                self.buttons["multiview"][7].setText("Deactivate Cameras")
+            else:
+                self.buttons["multiview"][7].setText("Deactivate Camera")
+        else:
+            if plural:
+                self.buttons["multiview"][7].setText("Activate Cameras")
+            else:
+                self.buttons["multiview"][7].setText("Activate Camera")
+    elif textbox == "quality":
+        #Finds whether main, side, or both hierarchies of camera are staged
+        stagedhierarchies = self.stagedCamHierarchies()
+        resolutions = ""
+        if stagedhierarchies[0] and stagedhierarchies[1]:
+            resolutions += "\n({}x{} for main cameras and {}x{} for side cameras)".format(int(480*(value/7)), int(640*(value/7)), int(480*(value/14)), int(640*(value/14)))
+        elif stagedhierarchies[0] and (not stagedhierarchies[1]):
+            resolutions += "\n({}x{} for main cameras)".format(int(480*(value/7)), int(640*(value/7)))
+        elif (not stagedhierarchies[0]) and stagedhierarchies[1]:
+            resolutions += "\n({}x{} for side cameras)".format(int(480*(value/14)), int(640*(value/14)))
+        else:
+            raise ValueError("Staged camera index is empty")
+        text = "The current quality preset is {} {}".format(value, resolutions)
+        self.textboxes["multiview"][2].setValue(text)
+    elif textbox == "color":
+        if value:
+            color = "RGB"
+            self.buttons["multiview"][12].setText("Black & White")
+        else:
+            color = "B&W"
+            self.buttons["multiview"][12].setText("Color")
+        text = "Color: {}".format(color)
+        self.textboxes["multiview"][3].setValue(text)
+    elif textbox == "framerate":
+        stagedhierarchies = self.stagedCamHierarchies()
+        framerates = ""
+        if stagedhierarchies[0] and (not stagedhierarchies[1]):
+            framerates += "\n({}fps for main cameras)".format(int(30*(value/7)))
+        elif (not stagedhierarchies[0]) and stagedhierarchies[1]:
+            framerates += "\n({}fps for side cameras)".format(int(30*(value/7)))
+        elif stagedhierarchies[0] and stagedhierarchies[1]:
+            framerates += "\n({}fps for main cameras and {}fps for side cameras)".format(int(30*(value/7)), int(20*(value/7)))
+        else:
+            raise ValueError("Staged camera index is empty")
+        text = "The current framerate preset is {} {}".format(value, framerates)
+        self.textboxes["multiview"][4].setValue(text)
+    elif textbox == "diagnostic":
+        self.textboxes["multiview"][5].setValue(text)
+
+  def setRemainingTime(self, time):
+    text = "Match Currently running \n{} seconds remaning".format(time)
+    self.putToDash("diagnostic", text)
+
+  def stagedCamHierarchies(self):
+      staged = self.vars["staged"]
+      stagedhierarchies = [False, False]
+      if (0 in staged) or (1 in staged):
+          stagedhierarchies[0] = True
+      if (2 in staged) or (3 in staged):
+          stagedhierarchies[1] = True
+      return stagedhierarchies
+
+  def stageFrontCam(self):
+      #The staged (active) camera objects
+      self.vars["staged"] = [0]
+      self.resetToggles(0)
+      visiontable.putNumber("activecam", 0)
+      self.putToDash("staged", self.vars["staged"])
+
+  def stageBackCam(self):
+      self.vars["staged"] = [1]
+      visiontable.putNumber("activecam", 1)
+      self.resetToggles(1)
+      self.putToDash("staged", self.vars["staged"])
+
+  def stageLeftCam(self):
+      self.vars["staged"] = [2]
+      visiontable.putNumber("activecam", 2)
+      self.resetToggles(2)
+      self.putToDash("staged", self.vars["staged"])
+
+  def stageRightCam(self):
+      self.vars["staged"] = [3]
+      visiontable.putNumber("activecam", 3)
+      self.resetToggles(3)
+      self.putToDash("staged", self.vars["staged"])
+
+  def stageAllCams(self):
+      self.vars["staged"] = [0, 1, 2 ,3]
+      self.resetToggles("all")
+      self.putToDash("staged", self.vars["staged"])
+
+  def stageMainCams(self):
+      self.vars["staged"] = [0, 1]
+      self.resetToggles("main")
+      self.putToDash("staged", self.vars["staged"])
+
+  def stageSubCams(self):
+      self.vars["staged"] = [2, 3]
+      self.resetToggles("sub")
+      self.putToDash("staged", self.vars["staged"])
+
+  def resetToggles(self, staged):
+      self.resetActivity(staged)
+      self.resetColor(staged)
+
+  def toggleActivity(self):
+      """
+      Toggles wether the staged cameras are active or not
+      """
+      self.vars["isactive"] = not self.vars["isactive"]
+      if self.vars["isactive"]:
+          self.activateStaged()
+      else:
+          self.deactivateStaged()
+      self.putToDash("active", self.vars["isactive"])
+
+
+  def activateStaged(self):
+      staged = self.getStagedCams()
+      for camera in staged:
+          activate(camera)
+
+  def deactivateStaged(self):
+      staged = self.getStagedCams()
+      for camera in staged:
+          deactivate(camera)
+
+  def increaseFramerate(self):
+      #Checks if framerate preset is at or above maximum
+      if self.vars["framerate"] >= 7:
+          return
+      self.vars["framerate"] += 1
+      self.updateToFramerate()
+      self.putToDash("framerate", self.vars["framerate"])
+
+  def decreaseFramerate(self):
+      #Checks if framerate preset is at or below minimum
+      if self.vars["framerate"] <= 1:
+          return
+      self.vars["framerate"] -= 1
+      self.updateToFramerate()
+      self.putToDash("framerate", self.vars["framerate"])
+
+  def updateToFramerate(self):
+      """
+      Updates all cameras to the class framerate preset
+      """
+      staged = self.getStagedCams()
+      preset = self.vars["framerate"]
+      for ind in self.vars["staged"]:
+          camera = staged[ind]
+          if ind in self.mains:
+              updateCamToFramerate(camera, preset, main=True)
+          elif ind in self.sides:
+              updateCamToFramerate(camera, preset, main=False)
+          else:
+              raise ValueError("Staged Index {} out of known range".format(self.vars["staged"][ind]))
+
+  def increaseQuality(self):
+      if self.vars["quality"] >= 7:
+          return
+      self.vars["quality"] += 1
+      self.updateToQuality()
+      self.putToDash("quality", self.vars["quality"])
+
+  def decreaseQuality(self):
+      if self.vars["quality"] <= 1:
+          return
+      self.vars["quality"] -= 1
+      self.updateToQuality()
+      self.putToDash("quality", self.vars["quality"])
+
+  def updateToQuality(self):
+      """
+      Updates all cameras the class quality preset
+      """
+      staged = self.getStagedCams()
+      preset = self.vars["quality"]
+      for ind in self.vars["staged"]:
+          camera = staged[ind]
+          if ind in self.mains:
+              updateCamToQuality(camera, preset, main=True)
+          elif ind in self.sides:
+              updateCamToQuality(camera, preset, main=False)
+          else:
+              raise ValueError("Staged Index {} out of known range".format(self.vars["staged"][ind]))
+
+  def toggleColor(self):
+      """
+      Toggles the entire class's color from/to color
+      """
+      staged = self.getStagedCams()
+      self.vars["color"] = not self.vars["color"]
+      for camera in staged:
+          setCamColor(camera, self.vars["color"])
+      self.putToDash("color", self.vars["color"])
+
+  #Function never worked before, and was therefore simplified
+  def resetActivity(self, staged):
+      return True
+
+  #Same rationale as above
+  def resetColor(self, staged):
+      return True
+
+  def getStagedCams(self):
+    staged = []
+    for num in self.vars["staged"]:
+      staged.append(self.cameras["match"][num])
+    return staged
+
+def activate(camera):
+    camera.active = True
+    camera.updateOverNetwork()
+
+def deactivate(camera):
+    camera.active = False
+    camera.updateOverNetwork()
+
+def updateCamToQuality(camera, preset, main = True):
+    """
+    Updates a single camera to one of the preset quality values
+    """
+    if main:
+        quality = (int(480*(preset/7)), int(640*(preset/7)))
+    else:
+        quality = (int(480*(preset/14)), int(640*(preset/14)))
+    camera.width = quality[1]
+    camera.height = quality[0]
+    camera.updateOverNetwork()
+
+def updateCamToFramerate(camera, preset, main = True):
+    """
+    Updates a single camera to one of the preset framerate values
+    """
+    #Framerate will be higher for main cameras since they are more important
+    if main:
+        framerate = int(30*(preset/7))
+    else:
+        framerate = int(20*(preset/7))
+    camera.framerate = framerate
+    camera.updateOverNetwork()
+
+def setCamColor(camera, color):
+    """
+    Sets a single camera to color/BW
+    """
+    camera.color = color
+    camera.updateOverNetwork()
+
+class SplitCam(TkWin):
+  defaultlocation = (1, 1, 16, 16)
+
+  def splitCamInTwo(self, cams, horizontal=True):
+      self.ungridStaged()
+      if horizontal:
+          rows = self.defaultlocation[0], int((self.defaultlocation[2]-self.defaultlocation[0])/2)+2
+          columns = self.defaultlocation[1], self.defaultlocation[1]
+          rowspans = int(self.defaultlocation[2]/2), int(self.defaultlocation[2]/2)
+          columnspans = self.defaultlocation[3], self.defaultlocation[3]
+      else:
+          rows = self.defaultlocation[0], self.defaultlocation[0]
+          columns = self.defaultlocation[1], int((self.defaultlocation[3]-self.defaultlocation[1])/2)
+          rowspans = self.defaultlocation[2], self.defaultlocation[2]
+          columnspans = int(self.defaultlocation[3]/2), int(self.defaultlocation[3]/2)
+      for ind in range(2):
+          self.gridWidget(self.cameras["match"][cams[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
+      self.vars["staged"] = cams
+
+  def splitToMains(self):
+      self.splitCamInTwo(cams=[0, 1])
+
+  def splitToSides(self):
+      self.splitCamInTwo(cams=[2, 3])
+
+  def splitCamInFour(self, order=[0,1,2,3]):
+      self.ungridStaged()
+      rows = (self.defaultlocation[0], int((self.defaultlocation[2]-self.defaultlocation[0])/4)+2, 
+              self.defaultlocation[0], int((self.defaultlocation[2]-self.defaultlocation[0])/4)+2)
+      columns = (self.defaultlocation[1], self.defaultlocation[1],
+              int((self.defaultlocation[3]-self.defaultlocation[1])/4)+2, int((self.defaultlocation[3]-self.defaultlocation[1])/4)+2)
+      rowspans = int(self.defaultlocation[2]/4), int(self.defaultlocation[2]/4), int(self.defaultlocation[2]/4), int(self.defaultlocation[2]/4)
+      columnspans = int(self.defaultlocation[3]/4), int(self.defaultlocation[3]/4), int(self.defaultlocation[3]/4), int(self.defaultlocation[3]/4)
+      for ind in range(4):
+          self.gridWidget(self.cameras["match"][order[ind]], rows[ind], columns[ind], rowspans[ind], columnspans[ind])
+      self.vars["staged"] = order
+
+  def splitToAll(self):
+      self.splitCamInFour(self)
+
+  def ungridStaged(self):
+      staged = self.getStagedCams()
+      for camera in staged:
+          self.ungridWidget(camera)
+
+  def getStagedCams(self):
+    staged = []
+    for num in self.vars["staged"]:
+      staged.append(self.cameras["match"][num])
+    return staged
+
 def splitWidgetName(widgetname):
   """
   Splits a widget's gui file name into the widget's type and number
@@ -466,3 +856,11 @@ def processMenuHierarchy(toplevel, hierarchy, self):
           toplevel.add_command(label=itemname, command=fts.partial(item, self))
       else:
         toplevel.add_command(label=itemname, command=item)
+
+#Networking functions
+def sendStartSignal():
+  comsock.sendto(b"i", (piip, 5800))
+
+#Puts pi into configuration mode
+def configSystem():
+  visiontable.putBoolean("config", True)

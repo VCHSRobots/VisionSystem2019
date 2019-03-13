@@ -9,7 +9,7 @@ import tkwin as win
 import commands
 import menus
 import visglobals
-from visglobals import guimaps, visiontable, camnamenums, setups, competitioninterface
+from visglobals import guimaps, visiontable, setups, competitioninterface
 
 #Global dictionary of menu configuration functions
 global configwascalled #Tracks which configuration functions have been called
@@ -20,14 +20,12 @@ camerasmade = False
 global commandfuncs
 
 #Interface Configuration Functions
+#Adds needed widgets into the given window
+#Not all of these work due to constant updates
 def configureMainMenu(self):
   global configwascalled
-  self.addButton(text = "Start Match!", command = commands.startMatchInterface, interface = "mainmenu")
+  self.addButton(text = "Start Match!", command = self.startMatchInterface, interface = "mainmenu")
   configwascalled["mainmenu"] = True
-
-def configureSettingsMenu(self):
-  global configwascalled
-  configwascalled["settings"] = True
 
 def configureTest(self):
   global configwascalled
@@ -38,6 +36,7 @@ def configureTest(self):
 def configureOneCamMatch(self):
   #Configuration only to be called by configureMatchInterfaces
   global configwascalled
+  setupMatchCameras(self, interface="onecammatch")
   self.addButton("Switch Cam", commands.swapOutCam, partialarg = win.SELF, interface = "onecammatch")
   self.addEntry(interface = "onecammatch")
   configwascalled["onecammatch"] = True
@@ -46,21 +45,20 @@ def configureMultiview(self):
   global configwascalled
   # Adds cameras to a 'match' interface then copies them to the proper interface
   # so their duplicate Camera widgets don't try to reinitialize identical sockets
-  configureMatchCameras(self)
-  copyMatchCameras(self, interface="multiview")
-  self.addButton("Select Front", commands.stageFrontCam, interface = "multiview")
-  self.addButton("Select Back", commands.stageBackCam, interface = "multiview")
-  self.addButton("Select Left", commands.stageLeftCam, interface = "multiview")
-  self.addButton("Select Right", commands.stageRightCam, interface = "multiview")
-  self.addButton("Select All", commands.stageAllCams, interface = "multiview")
-  self.addButton("Select Mains", commands.stageMainCams, interface = "multiview")
-  self.addButton("Select Sides", commands.stageSubCams, interface = "multiview")
-  self.addButton("Deactivate Cameras", commands.toggleActivity, interface = "multiview")
-  self.addButton("Framerate Up", commands.increaseFramerate, interface = "multiview")
-  self.addButton("Framerate Down", commands.decreaseFramerate, interface = "multiview")
-  self.addButton("Increase Quality", commands.increaseQuality, interface = "multiview")
-  self.addButton("Decrease Quality", commands.decreaseQuality, interface = "multiview")
-  self.addButton("Black & White", commands.toggleColor, interface = "multiview")
+  setupMatchCameras(self, interface="multiview")
+  self.addButton("Select Front", self.stageFrontCam, interface = "multiview")
+  self.addButton("Select Back", self.stageBackCam, interface = "multiview")
+  self.addButton("Select Left", self.stageLeftCam, interface = "multiview")
+  self.addButton("Select Right", self.stageRightCam, interface = "multiview")
+  self.addButton("Select All", self.stageAllCams, interface = "multiview")
+  self.addButton("Select Mains", self.stageMainCams, interface = "multiview")
+  self.addButton("Select Sides", self.stageSubCams, interface = "multiview")
+  self.addButton("Deactivate Cameras", self.toggleActivity, interface = "multiview")
+  self.addButton("Framerate Up", self.increaseFramerate, interface = "multiview")
+  self.addButton("Framerate Down", self.decreaseFramerate, interface = "multiview")
+  self.addButton("Increase Quality", self.increaseQuality, interface = "multiview")
+  self.addButton("Decrease Quality", self.decreaseQuality, interface = "multiview")
+  self.addButton("Black & White", self.toggleColor, interface = "multiview")
   self.addText("All Cameras Staged", interface = "multiview")
   self.addText("The staged cameras are active", interface = "multiview")
   self.addText("Quality: 4\n(274x365 for main cameras and 137x182 for side cameras)", interface = "multiview")
@@ -78,37 +76,65 @@ def configureMultiview(self):
   configwascalled["multiview"] = True
 
 def configureFourCam(self):
+  global configwascalled
+  #Creates and sets up widgets that can connect to the four expected cameras
+  setupMatchCameras(self, "fourcam")
+  #Sets up the buttons specified in the *guiname*.setup file
   configureStacks(self, "fourcam")
+  #Initiates some setting variables to prevent KeyErrors
   self.vars["bandwidthreduced"] = False
   self.vars["staged"] = [0, 1, 2, 3]
+  configwascalled["multiview"] = True
 
 def configureSplitCam(self):
   global configwascalled
+  #Creates and sets up widgets that can connect to the four expected cameras
+  setupMatchCameras(self, "splitcam")
+  #Sets up the buttons specified in the *guiname*.setup file
   configureStacks(self, "splitcam")
+  #Initiates some setting variables to prevent KeyErrors
   self.vars["staged"] = [0]
   self.vars["bandwidthreduced"] = False
   configwascalled["splitcam"] = True
 
 def configureOneCam(self):
+  global configwascalled
+  #Creates and sets up widgets that can connect to the four expected cameras
+  setupMatchCameras(self, "onecam")
+  #Sets up the buttons specified in the *guiname*.setup file
   configureStacks(self, "onecam")
+  #Initiates some setting variables to prevent KeyErrors
   self.vars["staged"] = []
   self.vars["bandwidthreduced"] = False
   commands.frontCam(self)
+  configwascalled["onecam"] = True
 
+def configurePlainComp(self):
+  global configwascalled
+  #Gets the camera active at launch
+  firstcamnum = int(visiontable.getNumber("isactive", 0))
+  #Places the camera in the 'active' part of the system
+  self.vars["staged"] = [firstcamnum]
+  #Adds the camera widget to the window
+  self.addCamera(firstcamnum)
+  self.copyMatchCameras("plaincomp")
+  self.vars["bandwidthreduced"] = False
+  configwascalled["plaincomp"] = True
+
+#Not a specific configuration function
+#Part of the configuring process which allows buttons to be easily added in a stack
 def configureStacks(self, interface):
   setup = setups[interface]
   commandfuncs = {"toggleBandwidth": commands.toggleBandwidth, "showFront": commands.frontCam, 
                   "showBack": commands.backCam, "showLeft": commands.leftCam, 
-                  "showRight": commands.rightCam, "splitToMains": commands.splitToMains,
-                  "splitToSides": commands.splitToSides, "splitToAll": commands.splitToAll,
-                  "startMatch": commands.startMatchInterface, "configSystem": commands.configSystem,
-                  "sendStartSiginal": commands.sendSignal, "saveImage": commands.saveImage}
+                  "showRight": commands.rightCam, "splitToMains": self.splitToMains,
+                  "splitToSides": self.splitToSides, "splitToAll": self.splitToAll,
+                  "startMatch": self.startMatchInterface, "configSystem": self.configSystem,
+                  "sendStartSiginal": self.sendSignal, "saveImage": self.saveImage}
   self.stacks = {}
   self.vars["namedwidgets"] = {}
   self.stacks["buttons"] = []
   buttons = setup["buttons"]
-  configureMatchCameras(self, recams=True)
-  copyMatchCameras(self, interface)
   #Caches nedded widgets in their proper stack location
   for buttonargs in buttons:
     if not buttonargs["command"] in commandfuncs:
@@ -118,18 +144,15 @@ def configureStacks(self, interface):
     #Uses the the function's name as a string by which the widget can be referred to
     self.vars["namedwidgets"][buttonargs["command"]] = button
 
-def configurePlainComp(self):
-  global configwascalled
-  configureStacks(self, "plaincomp")
-  self.vars["staged"] = [0]
-  commands.getStagedCam(self)
-  self.vars["bandwidthreduced"] = False
-  configwascalled["plaincomp"] = True
+#Also part of general configuration process
+def setupMatchCameras(self, interface):
+  configureMatchCameras(self, recams=True)
+  self.copyMatchCameras(interface)
 
-configfunctions = {"mainmenu": configureMainMenu, "settings": configureSettingsMenu, 
-                  "multiview": configureMultiview, "test": configureTest, 
-                  "fourcam": configureFourCam, "splitcam": configureSplitCam, 
-                  "onecam": configureOneCam, "plaincomp": configurePlainComp}
+configfunctions = {"mainmenu": configureMainMenu, "multiview": configureMultiview,
+                  "test": configureTest,          "fourcam": configureFourCam, 
+                  "splitcam": configureSplitCam,  "onecam": configureOneCam, 
+                  "plaincomp": configurePlainComp}
 
 #Supplementary Configuration Functions
 def configureMatchCameras(self, neededcams = (0, 1, 2, 3), recams=False):
@@ -147,15 +170,8 @@ def configureMatchCameras(self, neededcams = (0, 1, 2, 3), recams=False):
     addCams(self, neededcams, interface="match")
     self.camerasconfiged = True
 
-def copyMatchCameras(self, interface):
-  """
-  Copies the cameras in the match interface to the specified interface
-  """
-  self.cameras[interface] = []
-  for camera in self.cameras["match"]:
-    self.cameras[interface].append(camera)
-
-#Depreciated
+#Unused by main interfaces
+#Copy of copyMatchCameras
 def shareMatchCameras(self):
   """
   Copies match interface cameras to two specific interfaces which won't be used in competition

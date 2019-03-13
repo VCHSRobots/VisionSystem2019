@@ -13,12 +13,13 @@ import queue as queuelib
 import numpy as np
 from multi import makeVideoProcess, makeVideoSenderProcess
 from threads import VideoThread, VideoSender
-from multi import makeVideoProcess, makeVideoSenderProcess
 from PIL import Image
 from queue import Queue, LifoQueue
 from networktables import NetworkTables as nt
 
 import stdreader
+from camconfig import makeConfigedCamera as makeCamera
+from camconfig import makeConfigProcess
 
 #Globals
 TCP = socket.SOCK_STREAM
@@ -123,7 +124,7 @@ def makeCam(camnum):
   """
   Tries to make a camera, fails if it doesn't work
   """
-  camera = cv2.VideoCapture(camnum)
+  camera = makeCamera(camnum)
   ret, _ = camera.read()
   if ret:
     return camera
@@ -265,7 +266,7 @@ def exportSwitchStream(sock, camnums, timeout = default_match_time, socktype = U
     for camnum in camnums:
       camvals = pollCamVars(camnum)
       if camvals["isactive"] and time.perf_counter()-lasttimesent[camnum] > 1/camvals["framerate"]: #If camera is active and framerate time has passed
-        activecam = cv2.VideoCapture(camnum)
+        activecam = camera(camnum)
         size = exportImage(camera=activecam, camnum=camnum, sock=sock, camvals=camvals, ip=cliip)
         if size == -1:
           continue
@@ -291,17 +292,17 @@ def exportSwappableStream(sock, camnums, timeout = default_match_time, socktype 
   totalsize = 0
   activecam = table.getNumber("activecam", camnums[0])
   if activecam in camnums:
-    camera = cv2.VideoCapture(activecam)
+    camera = makeCamera(activecam)
   else:
-    camera = cv2.VideoCapture(0)
+    camera = makeCamera(0)
   while time.perf_counter()-starttime <= time:
     if activecam != table.getNumber("activecam", camnums[0]):
       camera.release()
       activecam = table.getNumber("activecam", camnums[0])
       if activecam in camnums:
-        camera = cv2.VideoCapture(activecam)
+        camera = makeCamera(activecam)
       else:
-        camera = cv2.VideoCapture(0)
+        camera = makeCamera(0)
     camvals = pollCamVars(activecam)
     if camvals["isactive"] and time.perf_counter()-lastimesent >= 1/camvals["framerate"]: #If camera is active and framerate time has passed
       size = exportImage(camera=camera, camnum=activecam, sock=sock, camvals=camvals, ip=cliip)
@@ -377,7 +378,7 @@ def getQueueMessages(msgqueues):
       messages[camnum] = message
   return messages
 
-def config(sock):
+def configLegacy(sock):
   message = b""
   camdict = {}
   indsused = 0
@@ -387,7 +388,7 @@ def config(sock):
     badcams = exportTestStream(sock, camdict)
     for camnum in cams:
       if (not camnum in camdict):
-        camdict[camnum] = cv2.VideoCapture(indsused)
+        camdict[camnum] = makeCamera(indsused)
         indsused += 1
     print(camdict, indsused)
     for badcam in badcams:
@@ -396,6 +397,32 @@ def config(sock):
       indsused -= 1
     message = recvWithTimeout(sock)
   return camdict
+
+def config(listener):
+  message = b""
+  camdict = {}
+  qdict = {}
+  badcams = []
+  indsused = 0
+  while message != b"start":
+    #Scans for active cameras and posts them to NetworkTables
+    cams = stdreader.scanForCameras()
+    for camnum in cams:
+      if (not camnum in camdict):
+        camera = makeCamera(indsused)
+        camdict[camnum] = camera
+        queue = Queue()
+        qdict[camnum] = queue
+        makeVideoProcess(camera, camnum, queue).start()
+        indsused += 1
+    for num in qdict:
+      if not camdict[num].grab():
+        qdict[num].put(b"stop")
+        badcams.append(num)
+    for num in badcams:
+      camdict.pop(num)
+      qdict.pop(num)
+  return camdict, qdict
 
 def configWithThreads(sock):
   sockmessage = b""
@@ -516,7 +543,7 @@ def configWithSenderProcesses(sock):
   return msgqdict
   
 def testCamnum(camnum):
-  camera = cv2.VideoCapture(camnum)
+  camera = makeCamera(camnum)
   if camera.grab():
     return camera
   else:
@@ -537,10 +564,10 @@ def configSingle(listener):
     camnums = stdreader.scanForCameras()
     if camera == None and camnums:
       camera = testCamnum(len(camnums)-1)
-    elif not camnums and type(camera) == cv2.VideoCapture:
+    elif not camnums and type(camera) == makeCamera:
       #If the camera was unplugged but the object still registers
       camera = None
-    elif type(camera) == cv2.VideoCapture:
+    elif type(camera) == makeCamera:
       #Otherwise, test if camera is alive
       if not testCamera(camera):
         camera = None
@@ -565,7 +592,7 @@ def sendWithTimeout(sock, msg, adr):
     except socket.timeout:
         return -1
 
-def runMatch(time = 180):
+def runLegacyMatch(time = 180):
   sock = setupSenderSocket()
   #Runs in configuration mode until recieving start signal
   try:
@@ -576,6 +603,16 @@ def runMatch(time = 180):
     sock.close()
     for camnum in cams:
       cams[camnum].release()
+
+def runMatch():
+  sock = setupListenerSocket()
+  try:
+    cams, queues = config(sock)
+    makeConfigProcess(cams, queues).run()
+  finally:
+    sock.close()
+    for cam in cams:
+      cam.release()
 
 def runParallelMatch(time = 180, processes = False):
   #Whether the stop message has been sent to the thread in case of error

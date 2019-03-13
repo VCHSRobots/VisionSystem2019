@@ -29,7 +29,6 @@ def openSetupFile(name):
 def null():
   pass
 
-#Ip is configured to Holiday's laptop and pi... change if neccecary!
 rioip = "roboRIO-4415-frc.local"
 #Duplicate variables for backward compatibility
 ip = "10.44.15.5"
@@ -63,7 +62,10 @@ setupnames = ["splitcam", "onecam", "fourcam", "plaincomp"]
 setups = {name: openSetupFile(name) for name in setupnames}
 
 #Camera numbers by their name
-camnamenums = {"Front": 0, "Back": 1, "Left": 2, "Right": 3}
+camnames = {"Front": 0, "Back": 1, "Left": 2, "Right": 3}
+
+#Valid cam nums
+validcamnums = [0, 1, 2, 3]
 
 #NetworkTables
 nt.initialize("roborio-4415-frc.local")

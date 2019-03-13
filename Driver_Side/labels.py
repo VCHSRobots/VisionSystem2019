@@ -16,7 +16,7 @@ from PIL import ImageTk
 
 #Local Imports
 import fonts
-from visglobals import myip, visiontable
+from visglobals import myip, visiontable, validcamnums
 
 failure_tolerance = 14
 
@@ -63,18 +63,23 @@ class Camera(Widget):
         self.camnum = camnum
         self.active = True
         #TODO: Width and Height are magic numbers: replace them with a good default.
-        self.width = 365
-        self.height = 274
+        self.width = 800
+        self.height = 600
+        #Size to which images are scaled upon arrival
         self.widthalias = 800
+        #heightalias is slightly lower than actual image size because windows clips the tkinter window at the bottom
         self.heightalias = 510
         self.color = True
         self.framerate = 10
+        #jpeg quantization and bzip compression rates on images - currently unused
         self.quantization = 8
         self.compression = 6
         self.quality = 10
         self.maxsize = 50000
         #self.updateOverNetwork()
         self.widget = tk.Label(root)
+        #Ip adress of the device running the system
+        self.ip = ip
         #Makes a listener socket bound to this specific camera
         if sock:
             self.sock = sock
@@ -120,6 +125,18 @@ class Camera(Widget):
         self.window.cameras[self.interface].insert(self.ind, camera)
         self.window.replaceWidget(self, camera)
         self.widget.destroy()
+
+    def changeCamnum(self, camnum):
+        """
+        Reconfigures the label to display the feed of a different camera
+        """
+        if (camnum not in validcamnums) or (camnum is self.camnum):
+            return
+        self.camnum = camnum
+        self.sock.shutdown(socket.SHUT_RDWR)
+        self.sock.close()
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((self.ip, 5800+camnum))
 
     def updateOverNetwork(self):
         """

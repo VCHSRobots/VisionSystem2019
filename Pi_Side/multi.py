@@ -15,19 +15,25 @@ from PIL import Image
 from queue import Queue
 from networktables import NetworkTables as nt
 
+from camconfig import makeConfigedCamera as makeCamera
+
 #Globals
 RGB = cv2.COLOR_BGR2RGB
 GRAY = cv2.COLOR_BGR2GRAY
-dwidth = 400
-dheight = 400
+dwidth = 320
+dheight = 240
 cliip = "10.44.15.5"
-defaultcamvals = {"isactive": False, "width": dwidth, "height": dheight, "color": True, "framerate": 10, "quantization": 8, "compression": 9, "quality": 95}
+ip = "10.44.15.6"
+defaultcamvals = {"isactive": True, "width": dwidth, "height": dheight, "color": True, "quality": 24}
 intvals = ["width", "height", "compression", "quality"]
 failure_tolerance = 8
 timeout = .05
 nt.startClient("frc_4415_roborio.local")
 connected = nt.isConnected()
 table = nt.getTable("/vision")
+
+def videoProcess(camera, camnum, msgqueue):
+  process = Process(target=processVideo, args=(camera, camnum, msgqueue))
 
 def makeVideoProcess(camnum, camind, camqueue, msgqueue):
   process = Process(target=runVideoProcess, args=(camnum, camind, camqueue, msgqueue))
@@ -37,11 +43,60 @@ def makeVideoSenderProcess(camnum, camind, msgqueue):
   process = Process(target=runVideoSender, args=(camnum, camind, msgqueue))
   return process
   
+def processVideo(camera, camnum, msgqueue):
+  properties = {"quality": 28}
+  failures = 0
+  paused = False
+  sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+  while True:
+    if failures >= failure_tolerance:
+      break
+    #Processes messages from parent
+    msg = readQueueWithTimeout(msgqueue)
+    #If the parent told the child to stop or a related child died
+    if msg == b"":
+      pass
+    elif msg == b"stop" or msg == b"dead":
+      break
+    elif msg == b"pause":
+      paused = True
+    elif msg == b"go":
+      paused = False
+    else:
+      words = msg.decode().split()
+      if words[0] == "set":
+        if words[1] in properties:
+          properties[words[1]] = convert(words[2])
+    if paused:
+      continue
+    camvals = pollCamVars(camnum)
+    if True:
+      ret, img = camera.read()
+      if ret:
+        if failures > 0:
+          failures = 0
+        img = processImage(img, properties)
+        sock.sendto(img, (cliip, 5800+camnum))
+      else:
+        failures += 1
+  msgqueue.put(b"dead")
+
+def convert(obj):
+  if obj.lower() == "true":
+    return True
+  elif obj.lower() == "false":
+    return False
+  else:
+    try:
+      return float(obj)
+    except ValueError:
+      return obj
+
 def runVideoProcess(camnum, camind, camqueue, msgqueue):
     lasttimesent = time.perf_counter()
     failures = 0
     paused = False
-    camera = cv2.VideoCapture(camind)
+    camera = makeCamera(camind)
     while True:
       if failures >= failure_tolerance:
         break
@@ -74,7 +129,7 @@ def runVideoSender(camnum, camind, msgqueue):
   lasttimesent = time.perf_counter()
   failures = 0
   paused = False
-  camera = cv2.VideoCapture(camind)
+  camera = makeCamera(camind)
   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
   try:
     while True:
@@ -135,13 +190,11 @@ def pollTableVals(camnum):
   return vals
 
 def processImage(img, camvals):
-  img = imutils.resize(img, width = camvals["width"], height = camvals["height"])
-  img = cv2.cvtColor(img, camvals["color"])
   img = Image.fromarray(img)
   imgbytes = io.BytesIO()
   img.save(imgbytes, format = "JPEG", quality=camvals["quality"])
   imgbytes = imgbytes.getvalue()
-  imgbytes = zlib.compress(imgbytes, camvals["compression"])
+  #imgbytes = zlib.compress(imgbytes, camvals["compression"])
   return imgbytes
 
 def readQueueWithTimeout(queue):
