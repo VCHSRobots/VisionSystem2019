@@ -73,7 +73,7 @@ def makeSystemThread(win):
 
 def sendStartSignal():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(b"i", (piip, 5800))
+    sock.sendto(b"start", (piip, 5800))
     sock.close()
 
 #Unused camera-related functions
