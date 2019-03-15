@@ -859,7 +859,7 @@ def processMenuHierarchy(toplevel, hierarchy, self):
 
 #Networking functions
 def sendStartSignal():
-  comsock.sendto(b"i", (piip, 5800))
+  comsock.sendto(b"start", (piip, 5800))
 
 #Puts pi into configuration mode
 def configSystem():

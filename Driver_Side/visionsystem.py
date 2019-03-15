@@ -71,11 +71,6 @@ def makeSystemThread(win):
     thread = threads.SystemThread(win)
     return thread
 
-def sendStartSignal():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(b"start", (piip, 5800))
-    sock.close()
-
 #Unused camera-related functions
 def getActiveCams(numrange):
     """
