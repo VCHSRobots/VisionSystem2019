@@ -26,13 +26,13 @@ GRAY = cv2.COLOR_BGR2GRAY
 cliip = "10.44.15.5"
 piip = "10.44.15.6"
 myadr = (piip, 5800)
-dwidth = 300
-dheight = 400
+dwidth = 400
+dheight = 255
 defaultcamvals = {"isactive": True, "width": dwidth,
                   "height": dheight, "color": True,
-                  "framerate": 10, "quality": 28}
+                  "framerate": 24, "quality": 28}
 default_match_time = 180
-maxclientdowntime = 8
+maxclientdowntime = 14
 #Camera value keys which need to be cast to integers
 intvals = ["width", "height", "quality"]
 robotip = "roborio-4415-frc.local"
@@ -100,7 +100,6 @@ def exportSwappableStream(sock, camnums, socktype = UDP):
       if activecam in camnums:
         camera = cv2.VideoCapture(camnums.index(activecam))
     #Retrieves variables about the specific camera from NetworkTables
-    #May be replaced as it is camera specific
     camvals = pollCamVars()
     currenttime = time.perf_counter()
     #If enough time has passed to remain within the framerate restriction
@@ -120,6 +119,8 @@ def exportSwappableStream(sock, camnums, socktype = UDP):
         #If the client hasn't responded for a while,
         #go back to configuration mode on next loop
         table.putBoolean("config", True)
+        clientupdatefailures = 0
+      lastimesent = currenttime
       #Obligatory waitKey call
       cv2.waitKey(1)
 
@@ -217,7 +218,7 @@ def checkClientUpdate(sock):
 def flushSock(sock):
   msg = None
   while msg != b"":
-    msg = sock.recvWithTimeout(sock)
+    msg = recvWithTimeout(sock)
 
 def configSwappableStream(listener):
   """
