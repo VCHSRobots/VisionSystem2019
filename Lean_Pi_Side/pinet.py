@@ -27,7 +27,7 @@ cliip = "10.44.15.5"
 piip = "10.44.15.6"
 myadr = (piip, 5800)
 dwidth = 400
-dheight = 255
+dheight = 264
 defaultcamvals = {"isactive": True, "width": dwidth,
                   "height": dheight, "color": True,
                   "framerate": 24, "quality": 28}

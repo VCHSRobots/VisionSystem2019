@@ -56,26 +56,44 @@ class Widget:
         return location
 
 class Camera(Widget):
-    #Class which reaches over the global network for camera access: for a local variant, use LocalCamera
-    def __init__(self, camnum, root, window, interface, ind, sock = None, timeout = .05, ip = myip):
-        #Camnum will match up with camnum on robot network
+    #Class which reaches over the global network for camera access
+    def __init__(self, camnum, root, window,
+                 interface, ind, sock=None,
+                 timeout=.05, ip=myip, isrootcamera=False):
+        #Camnum should match up with camnum on system network
         self.root = root
         self.camnum = camnum
+        self.isrootcamera = isrootcamera
+        self.ind = ind
+        self.window = window
+        self.interface = interface
+        self.timeout = timeout
         self.active = True
-        #TODO: Width and Height are magic numbers: replace them with a good default.
+        #Sets the actual size of the images coming from the size
         self.width = 400
-        self.height = 255
+        self.height = 264
         #Size to which images are scaled upon arrival
         self.widthalias = 800
-        #heightalias is slightly lower than actual image size because windows clips the tkinter window at the bottom
-        self.heightalias = 510
+        #heightalias is slightly lower than screen size
+        #because Windows clips the tkinter window at the bottom
+        self.heightalias = 528
+        self.widget = tk.Label(root)
+        #Unused variable for superclass compatibility
+        self.value = tk.StringVar()
         self.color = True
         self.framerate = 24
-        #jpeg image quality
+        #JPEG image quality
         self.quality = 24
+        #Recieving buffer size
         self.maxsize = 50000
-        #self.updateOverNetwork()
-        self.widget = tk.Label(root)
+        #Consecutive failed attempts at retriving an image from the network
+        self.failures = 0
+        #Whether the next image from the camera will be saved
+        self.save = False
+        self.frames = 0
+        self.location = ()
+        #Pushes camera values to NetworkTables
+        self.updateOverNetwork()
         #Ip adress of the device running the system
         self.ip = ip
         #Makes a listener socket bound to this specific camera
@@ -86,16 +104,7 @@ class Camera(Widget):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((ip, camnum+5800))
             self.sock.settimeout(timeout)
-        self.timeout = timeout
-        self.location = ()
-        self.failures = 0
-        self.ind = ind
-        self.window = window
-        self.interface = interface
-        #Whether the next image from the camera will be saved
-        self.save = False
-        self.frames = 0
-        
+
     def updateImgOnLabel(self):
         """
         Places the latest image from the socket stream port aligning with the camnum
@@ -116,10 +125,11 @@ class Camera(Widget):
         # if self.frames >= self.flushrate:
         #     self.flushSock()
         #     self.frames = 0
-    
+
     def swapWithFailedCamera(self):
-        #TODO: See if test code works
-        camera = FailedCamera(self.camnum, self.root, self.window, self.interface, self.ind, self.sock)
+        camera = FailedCamera(self.camnum, self.root, self.window, 
+                              self.interface, self.ind, self.sock,
+                              self.isrootcamera)
         self.window.cameras[self.interface].remove(self)
         self.window.cameras[self.interface].insert(self.ind, camera)
         self.window.replaceWidget(self, camera)
@@ -141,13 +151,23 @@ class Camera(Widget):
         """
         Updates Networktable data about the camera
         """
-        visiontable.putBoolean("{0}active".format(self.camnum), self.active)
-        visiontable.putNumber("{0}width".format(self.camnum), self.width)
-        visiontable.putNumber("{0}size".format(self.camnum), self.maxsize)
-        visiontable.putNumber("{0}height".format(self.camnum), self.height)
-        visiontable.putBoolean("{0}color".format(self.camnum), self.color)
-        visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
-        visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
+        if self.isrootcamera:
+            #If camera is allowed to use numberless global variables
+            visiontable.putBoolean("active", self.active)
+            visiontable.putNumber("width", self.width)
+            visiontable.putNumber("size", self.maxsize)
+            visiontable.putNumber("height", self.height)
+            visiontable.putBoolean("color", self.color)
+            visiontable.putNumber("framerate", self.framerate)
+            visiontable.putNumber("quality", self.quality)
+        else:
+            visiontable.putBoolean("{}active".format(self.camnum), self.active)
+            visiontable.putNumber("{}width".format(self.camnum), self.width)
+            visiontable.putNumber("{}size".format(self.camnum), self.maxsize)
+            visiontable.putNumber("{}height".format(self.camnum), self.height)
+            visiontable.putBoolean("{}color".format(self.camnum), self.color)
+            visiontable.putNumber("{}framerate".format(self.camnum), self.framerate)
+            visiontable.putNumber("{}quality".format(self.camnum), self.quality)
         
     def checkSize(self):
         """
@@ -163,7 +183,7 @@ class Camera(Widget):
         Polls the latest image from the network socket which corresponds with the camera number
         """
         #Commented out since it needs networktables
-        #self.checkSize() #Checks if buffer is large enough to hold incoming image
+        self.checkSize() #Checks if buffer is large enough to hold incoming image
         #Passes over image processing if socket times out
         img = self.recvWithTimeout()
         if img == b"":
@@ -206,7 +226,9 @@ def saveImage(image):
 
 class FailedCamera(Widget):
     #Camera fallback if a number cannot connect
-    def __init__(self, camnum, root, window, interface, ind, sock = None, ip = myip):
+    def __init__(self, camnum, root, window,
+                 interface, ind, sock=None, 
+                 ip=myip, isrootcamera=False):
         #Camnum will match up with camnum on robot network
         self.root = root
         self.camnum = camnum
@@ -217,9 +239,8 @@ class FailedCamera(Widget):
         self.ind = ind
         #Original Camera class variables except socket
         self.active = True
-        #TODO: Width and Height are magic numbers: replace them with a good default.
-        self.width = 500
-        self.height = 500
+        self.width = 0
+        self.height = 0
         self.color = True
         self.framerate = 10
         self.quantization = 8
@@ -235,25 +256,19 @@ class FailedCamera(Widget):
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((ip, camnum+5800))
         self.sock.setblocking(False)
-        
+        self.isrootcamera = isrootcamera
+
     def updateImgOnLabel(self):
         """
         Placeholder for this method on Camera
         """
         self.tryToConnect() #Tries to connect to proper camera
-    
+
     def updateOverNetwork(self):
         """
         Updates Networktable data about the camera
         """
-        visiontable.putBoolean("{0}active".format(self.camnum), self.active)
-        visiontable.putNumber("{0}width".format(self.camnum), self.width)
-        visiontable.putNumber("{0}height".format(self.camnum), self.height)
-        visiontable.putBoolean("{0}color".format(self.camnum), self.color)
-        visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
-        #visiontable.putNumber("{0}quantization".format(self.camnum), self.quantization)
-        visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
-        visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
+        #Does nothing as not to interfere with system
 
     def tryToConnect(self):
         """
@@ -262,9 +277,11 @@ class FailedCamera(Widget):
         cangetimg = self.getImgWithTimeout()
         if cangetimg:
             self.replaceWithWorkingCamera()
-    
+
     def replaceWithWorkingCamera(self):
-        camera = Camera(camnum=self.camnum, root=self.root, window=self.window, ind=self.ind, interface=self.interface, sock=self.sock, ip=self.ip)
+        camera = Camera(camnum=self.camnum, root=self.root, window=self.window, 
+                        ind=self.ind, interface=self.interface, 
+                        sock=self.sock, ip=self.ip, isrootcamera=self.isrootcamera)
         self.window.cameras[self.interface].remove(self)
         self.window.cameras[self.interface].insert(self.ind, camera)
         self.window.replaceWidget(self, camera)
@@ -276,10 +293,10 @@ class FailedCamera(Widget):
             return True
         except socket.error:
             return False
-        
+
     def shutdown(self):
         pass
-    
+
 class LocalCamera(Widget):
     """
     All functions matching with Camera share identical documentation
@@ -291,7 +308,6 @@ class LocalCamera(Widget):
             self.cam = testcam
             self.camnum = camnum
             self.active = True
-            #TODO: Width and Height are magic numbers: replace them with a good default.
             self.width = 100
             self.height = 100
             self.color = "GRAY"
@@ -337,7 +353,7 @@ class Button(Widget):
         self.widget = tk.Button(root, textvariable=self.text, command=command, font=font)
         self.text.set(text)
         self.location = ()
-    
+
     def setText(self, text):
         self.text.set(text)
 
@@ -348,7 +364,8 @@ class Checkbox(Widget):
     def __init__(self, root, text, command, onval=True, offval=False, font=fonts.Button):
         self.root = root
         self.value = tk.StringVar()
-        self.widget = tk.Checkbutton(root, text=text, command=command, onvalue=onval, offvalue=offval, font=font)
+        self.widget = tk.Checkbutton(root, text=text, command=command,
+                                     onvalue=onval, offvalue=offval, font=font)
         self.location = ()
 
 class RadioButtonParent(Widget):
@@ -358,13 +375,16 @@ class RadioButtonParent(Widget):
         self.value = vartype()
         #Buttons are a (displaytext, value) pair
         #They must all be of the same type
-        self.buttons = [RadioButton(root, text=text, variable=self.value, onvalue=val, font=self.font) for text, val in buttons]
+        self.buttons = [RadioButton(root, variable=self.value,
+                                    onvalue=val, font=self.font) 
+                        for text, val in buttons]
         self.location = ()
 
-    def addButton(self, text, value):
-        self.buttons.append(RadioButton(self.root, text=text, variable=self.value, onvalue=value, font=self.font))
+    def addButton(self, value):
+        self.buttons.append(RadioButton(self.root, variable=self.value,
+                                        onvalue=value, font=self.font))
 
-    def setOnGrid(self, option, row, column, columnspan, rowspan, perbutton=1):
+    def setOnGrid(self, row, column, columnspan, rowspan, perbutton=1):
         rowmode = True
         if perbutton < 1:
             raise ValueError("Rowspan cannot be less than one")
@@ -373,11 +393,12 @@ class RadioButtonParent(Widget):
         elif columnspan >= len(self.buttons)*perbutton:
             rowmode = False
         else:
+            rootmsg = "Rowspan of {} and columnspan of {} are too small to support {} buttons.".format(rowspan, columnspan, len(self.buttons))
             if perbutton > 1:
                 perbuttonmessage = " with each button taking {} rows/columns"
             else:
                 perbuttonmessage = ""
-            raise ValueError("Rowspan of {} and columnspan of {} are too small to support {} buttons{}.".format(rowspan, columnspan, len(self.buttons), perbuttonmessage))
+            raise ValueError("{}{}.".format(rootmsg, perbuttonmessage))
         if rowmode:
             row = row
             for button in self.buttons:
@@ -393,8 +414,9 @@ class RadioButtonParent(Widget):
         #Ungrids a single option from the set of RadioButton
         for button in self.buttons:
             button.ungrid()
+
 class RadioButton(Widget):
-    def __init__(self, root, text, variable=tk.BooleanVar, onvalue=True, font=fonts.Button):
+    def __init__(self, root, variable=tk.BooleanVar, onvalue=True, font=fonts.Button):
         self.root = root
         #Buttons are a (displaytext, value) pair
         self.text = tk.StringVar()
@@ -402,19 +424,21 @@ class RadioButton(Widget):
             self.value = variable()
         else:
             self.value = variable
-        self.widget = tk.Radiobutton(root, text=self.text, textvariable=self.value, onvalue=onvalue, font=font)
+        self.widget = tk.Radiobutton(root, text=self.text, 
+                                     textvariable=self.value, 
+                                     onvalue=onvalue, font=font)
         self.location = ()
 
     def changeText(self, text):
         self.text.set(text)
 
 class Combobox:
-    def __init__(self, root, values=[], onchange=null, font=fonts.Button):
+    def __init__(self, root, values, onchange=null, font=fonts.Button):
         self.root = root
         self.value = tk.StringVar()
         self.widget = ttk.Combobox(root, textvariable=self.value, font=font)
         self.values = values
-        self.widget["values"] = tuple(values)
+        self.widget["values"] = values
         self.onchange = onchange
         self.location = ()
 
@@ -450,7 +474,7 @@ class Listbox:
             return True
         else:
             return False
-    
+
     def setMode(self, multipleselect=False):
         if multipleselect:
             self.widget["selectmode"] = "extended"
@@ -474,7 +498,9 @@ class Text(Widget):
         return self.text.get()
 
 class Scale(Widget):
-    def __init__(self, root, length, orient=tk.VERTICAL, start=None, end=None, command=null, variable=False, font=fonts.Button):
+    def __init__(self, root, length, orient=tk.VERTICAL,
+                 start=None, end=None, command=null, 
+                 variable=False, font=fonts.Button):
         #Defaults start and end values if either are not defined
         self.root = root
         self.value = tk.DoubleVar()
@@ -488,7 +514,9 @@ class Scale(Widget):
             start = end-length
         elif start and (not end):
             end = start+length
-        self.widget = ttk.Scale(root, var=self.value, orient=orient, length=length, from_=start, to=end, font=fonts.Button)
+        self.widget = ttk.Scale(root, var=self.value, orient=orient,
+                                length=length, from_=start, to=end, 
+                                font=fonts.Button)
         if command is not null:
             self.configCommand(command)
         if variable:

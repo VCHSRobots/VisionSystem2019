@@ -117,7 +117,7 @@ class TkWin:
     return self.sock.getsockbyname()[0]
 
   #Widget Functions
-  def addCamera(self, camnum, interface="match", rewidget=False):
+  def addCamera(self, camnum, interface="match", rewidget=False, isrootcamera=False):
     """
     Adds a listener for a remote camera at a specified camnum socket
     Tries to reconnect with the FailedCamera widget if it cannot connect at first
@@ -125,7 +125,7 @@ class TkWin:
     if interface not in self.cameras:
       self.cameras[interface] = []
     ind = len(self.cameras[interface]) #Camera index to swap in case of failure
-    camera = labels.Camera(camnum, self.root, self, interface, ind, ip=self.ip)
+    camera = labels.Camera(camnum, self.root, self, interface, ind, ip=self.ip, isrootcamera=isrootcamera)
     self.cameras[interface].append(camera)
     if rewidget:
       return camera

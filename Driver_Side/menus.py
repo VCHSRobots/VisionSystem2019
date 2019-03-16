@@ -85,6 +85,7 @@ def plaincompMenu(self):
     while self.interface == "plaincomp":
         success = camera.updateImgOnLabel()
         if success:
+            reconnectattempts = 0
             currenttime = time.perf_counter()
             if currenttime-lastsendtime >= 1/camera.framerate:
                 self.sendConnectedMessage()

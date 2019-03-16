@@ -114,7 +114,7 @@ def configurePlainComp(self):
   #Places the camera in the 'active' part of the system
   self.vars["staged"] = [0]
   #Adds the camera at the 0 indice since images will be directed to one socket
-  self.addCamera(0)
+  self.addCamera(0, isrootcamera=True)
   self.copyMatchCameras("plaincomp")
   self.vars["bandwidthreduced"] = False
   configwascalled["plaincomp"] = True

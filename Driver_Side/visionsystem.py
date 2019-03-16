@@ -30,7 +30,8 @@ def startSystem():
     #Sends computer ip to the pi to keep from having to assign a static ip
     ip = sendIP()
     #Menus for manual system operation
-    menustructure = {"Mode": {"Send Start Signal": commands.sendIP, "Configure System": tkwin.configSystem}}
+    menustructure = {"Mode": {"Send Start Signal": commands.sendIP, 
+                              "Configure System": tkwin.configSystem}}
     #Creates the window to be displayed
     win = tkwin.SwitchingWindow("Vision System", ip=ip)
     #Sets camera values based on default json values
