@@ -214,6 +214,11 @@ def checkClientUpdate(sock):
   else:
     return False
 
+def flushSock(sock):
+  msg = None
+  while msg != b"":
+    msg = sock.recvWithTimeout(sock)
+
 def configSwappableStream(listener):
   """
   Returns a list of plugged in cameras
