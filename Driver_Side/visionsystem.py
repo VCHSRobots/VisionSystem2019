@@ -114,7 +114,7 @@ def testGrid():
     A test of the gridding function in the TkWin class
     """
     win = tkwin.TkWin("Test")
-    win.addLocalCam(0)
+    win.addCamera(0)
     guifile = open("test.gui")
     guimap = json.load(guifile)
     guifile.close()

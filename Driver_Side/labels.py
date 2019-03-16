@@ -63,18 +63,16 @@ class Camera(Widget):
         self.camnum = camnum
         self.active = True
         #TODO: Width and Height are magic numbers: replace them with a good default.
-        self.width = 800
-        self.height = 600
+        self.width = 400
+        self.height = 255
         #Size to which images are scaled upon arrival
         self.widthalias = 800
         #heightalias is slightly lower than actual image size because windows clips the tkinter window at the bottom
         self.heightalias = 510
         self.color = True
-        self.framerate = 10
-        #jpeg quantization and bzip compression rates on images - currently unused
-        self.quantization = 8
-        self.compression = 6
-        self.quality = 10
+        self.framerate = 24
+        #jpeg image quality
+        self.quality = 24
         self.maxsize = 50000
         #self.updateOverNetwork()
         self.widget = tk.Label(root)
@@ -106,20 +104,21 @@ class Camera(Widget):
         image = self.getImgFromNetwork()
         if self.failures > failure_tolerance:
             self.swapWithFailedCamera()
-            return
+            return False
         if not image:
             self.failures += 1
-            return
+            return False
         elif self.failures > 0:
             self.failures = 0
         self.widget.config(image=image)
         self.widget.image = image
-        self.frames += 1
+        return True
         # if self.frames >= self.flushrate:
         #     self.flushSock()
         #     self.frames = 0
     
     def swapWithFailedCamera(self):
+        #TODO: See if test code works
         camera = FailedCamera(self.camnum, self.root, self.window, self.interface, self.ind, self.sock)
         self.window.cameras[self.interface].remove(self)
         self.window.cameras[self.interface].insert(self.ind, camera)
@@ -148,7 +147,6 @@ class Camera(Widget):
         visiontable.putNumber("{0}height".format(self.camnum), self.height)
         visiontable.putBoolean("{0}color".format(self.camnum), self.color)
         visiontable.putNumber("{0}framerate".format(self.camnum), self.framerate)
-        visiontable.putNumber("{0}compression".format(self.camnum), self.compression)
         visiontable.putNumber("{0}quality".format(self.camnum), self.quality)
         
     def checkSize(self):
