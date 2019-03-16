@@ -80,8 +80,11 @@ def testMenu(self):
 
 def plaincompMenu(self):
     while self.interface == "plaincomp":
-        self.cameras["match"][0].updateImgOnLabel()
-        self.sendConnectedMessage()
+        success = self.cameras["match"][0].updateImgOnLabel()
+        if success:
+            self.sendConnectedMessage()
+        else:
+            commands.sendIP()
 
 matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
                 "onecammatch": null, "multiview": multiviewMenu,   

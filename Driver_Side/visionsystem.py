@@ -16,6 +16,7 @@ import configuration
 import threads
 import commands
 import visglobals
+from commands import sendIP
 from visglobals import myip, piip, null, myadr, comsock, visiontable, rioip, competitioninterface
 
 #Non-blocking attempt to connect to NetworkTables. This often doesn't work on the first try
@@ -41,19 +42,6 @@ def startSystem():
     win.runWin()
     #Tries to connect to NetworkTables if it failed before
     forceConnectNetworkTables()
-
-def sendIP():
-    #Creates a throwaway socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #Dummy connection to radio to make the computer reveal its own ip adress
-    sock.connect(("10.44.15.1", 80))
-    ip = sock.getsockname()[0]
-    sock.shutdown(socket.SHUT_RDWR)
-    sock.close()
-    sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    #Sends ip to pi
-    sender.sendto(ip.encode(), (piip, 5800))
-    return ip
 
 def forceConnectNetworkTables():
     """

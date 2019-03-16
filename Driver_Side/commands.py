@@ -7,13 +7,26 @@ import socket
 
 import visglobals
 import configuration as config
-from visglobals import comsock, piadr, visiontable, competitioninterface
+from visglobals import comsock, piip, piadr, visiontable, competitioninterface
 
 #TODO: Reorganize these and make some of them class functions
 
 camnames = {0: "Front", 1: "Rear", 2: "Left", 3: "Right"}
 
 #Globally used commands
+def sendIP():
+    #Creates a throwaway socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #Dummy connection to radio to make the computer reveal its own ip adress
+    sock.connect(("10.44.15.1", 80))
+    ip = sock.getsockname()[0]
+    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
+    sender = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #Sends ip to pi
+    sender.sendto(ip.encode(), (piip, 5800))
+    return ip
+
 #Unused
 def swapOutCam(self, replacedcam, newcam):
     """
