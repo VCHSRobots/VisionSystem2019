@@ -219,6 +219,7 @@ def configSwappableStream(listener):
   Returns a list of plugged in cameras
   Cameras MUST be plugged in in the order they appear or the system may become confused
   """
+  global cliip
   camnums = []
   camnumstoremove = []
   sockmessage = b""
@@ -241,7 +242,8 @@ def configSwappableStream(listener):
     camnumstoremove = []
     #Listens for start signal
     sockmessage = recvWithTimeout(listener)
-    started = sockmessage == b"start"
+    cliip = sockmessage.decode()
+    started = cliip.startswith("10.44.15")
   table.putBoolean("config", False)
   return camnums
 
