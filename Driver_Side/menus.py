@@ -79,12 +79,20 @@ def testMenu(self):
         print("here")
 
 def plaincompMenu(self):
+    #Time when the last connected signal was sent
+    lastsendtime = 0
+    ipsent = False
+    camera = self.cameras["match"][0]
     while self.interface == "plaincomp":
-        success = self.cameras["match"][0].updateImgOnLabel()
+        success = camera.updateImgOnLabel()
         if success:
-            self.sendConnectedMessage()
+            ipsent = False
+            if time.perf_counter()-lastsendtime >= 1/camera.framerate:
+                self.sendConnectedMessage()
         else:
-            commands.sendIP()
+            if not ipsent:
+                commands.sendIP()
+                ipsent = True
 
 matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
                 "onecammatch": null, "multiview": multiviewMenu,   

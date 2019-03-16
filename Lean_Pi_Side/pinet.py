@@ -111,17 +111,17 @@ def exportSwappableStream(sock, camnums, socktype = UDP):
         #Doesn't update diagnoser if sending failed
         continue
       diagnoser.update(size)
+      #Checks for indication that client is connected
+      if not checkClientUpdate(sock):
+        clientupdatefailures += 1
+      else:
+        clientupdatefailures = 0
+      if clientupdatefailures > maxclientdowntime:
+        #If the client hasn't responded for a while,
+        #go back to configuration mode on next loop
+        table.putBoolean("config", True)
       #Obligatory waitKey call
       cv2.waitKey(1)
-    #Checks for indication that client is connected
-    if not checkClientUpdate(sock):
-      clientupdatefailures += 1
-    else:
-      clientupdatefailures = 0
-    if clientupdatefailures > maxclientdowntime:
-      #If the client hasn't responded for a while,
-      #go back to configuration mode on next loop
-      table.putBoolean("config", True)
 
 def exportCamStream(sock, camnum, camera, socktype=UDP, timeout=180):
   """
@@ -250,6 +250,7 @@ def configSwappableStream(listener):
     cliip = sockmessage.decode()
     started = cliip.startswith("10.44.15")
   table.putBoolean("config", False)
+  flushSock(listener)
   return camnums
 
 def configSingle(listener):
