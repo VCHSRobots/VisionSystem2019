@@ -71,7 +71,7 @@ def runSwappableMatch():
     camnums = configSwappableStream(sock)
     exportSwappableStream(sock, camnums)
   finally:
-    sock.shutdown(socket.SHUT_RDWR)
+    sock.close()
   
 """
 Timeout does nothing
@@ -213,6 +213,11 @@ def checkClientUpdate(sock):
     return True
   else:
     return False
+
+def flushSock(sock):
+  msg = None
+  while msg != b"":
+    msg = sock.recvWithTimeout(sock)
 
 def configSwappableStream(listener):
   """
