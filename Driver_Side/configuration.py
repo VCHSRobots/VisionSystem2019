@@ -111,12 +111,10 @@ def configureOneCam(self):
 
 def configurePlainComp(self):
   global configwascalled
-  #Gets the camera active at launch
-  firstcamnum = int(visiontable.getNumber("isactive", 0))
   #Places the camera in the 'active' part of the system
-  self.vars["staged"] = [firstcamnum]
-  #Adds the camera widget to the window
-  self.addCamera(firstcamnum)
+  self.vars["staged"] = [0]
+  #Adds the camera at the 0 indice since images will be directed to one socket
+  self.addCamera(0)
   self.copyMatchCameras("plaincomp")
   self.vars["bandwidthreduced"] = False
   configwascalled["plaincomp"] = True

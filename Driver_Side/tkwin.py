@@ -21,7 +21,9 @@ GLOBAL = "*Global*"
 SELF = "*Self*"
 
 class TkWin:
-  def __init__(self, name, width = 800, height = 600, menustructure = {}, ip = myip, xloc = 1915, yloc = 0):
+  def __init__(self, name, width=800, 
+               height=600, menustructure={}, 
+               ip=myip, xloc=1915, yloc=0):
     #TODO width and height are magic numbers
     self.name = name
     #Sets up the window root
@@ -119,20 +121,6 @@ class TkWin:
     self.cameras[interface].append(camera)
     if rewidget:
       return camera
-
-  #Unused test function
-  def addLocalCam(self, camnum, interface="mainmenu", rewidget=False):
-    """
-    Local variant of addCam
-    """
-    if interface not in self.localcameras:
-      self.localcameras[interface] = []
-    camera = labels.LocalCamera(camnum, self.root)
-    if camera.active:
-      self.localcameras[interface].append(camera)
-      return True
-    else:
-      return False
 
   def addEntry(self, interface="mainmenu", font=None, rewidget=False):
     """
@@ -662,6 +650,10 @@ class MultiviewWindow(TkWin):
       for camera in staged:
           setCamColor(camera, self.vars["color"])
       self.putToDash("color", self.vars["color"])
+
+  def sendConnectedMessage(self):
+    #This function may be overriden by a subclass if more/different devices need to be messaged
+    comsock.sendto(b"connected", (piip, 5800))
 
   #Function never worked before, and was therefore simplified
   def resetActivity(self, staged):

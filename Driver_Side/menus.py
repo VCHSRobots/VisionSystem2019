@@ -1,15 +1,10 @@
 #interfaces.py: Manages which user interface is active
 #HP 1/21/2019
 
-import json
-import socket
 import time
-import tkwin as win
 
-import visglobals
 import commands
-import configuration as config
-from visglobals import visiontable, guimaps, null
+from visglobals import visiontable, null
 
 #Global settings dict
 global settings
@@ -38,7 +33,7 @@ def multiviewMenu(self):
         if timeleft < 0:
             timepassed = time.perf_counter()-starttime
             timeleft = matchtime-timepassed
-            commands.setRemainingTime(self, timeleft)
+            self.setRemainingTime(timeleft)
             commands.matchLoop(self, lastmatchcams)
             lastmatchcams = self.cameras["match"]
         else:
@@ -85,8 +80,8 @@ def testMenu(self):
 
 def plaincompMenu(self):
     while self.interface == "plaincomp":
-        self.switchToStagedCam()
         self.cameras["match"][0].updateImgOnLabel()
+        self.sendConnectedMessage()
 
 matchfunctions = {"mainmenu": mainMenu, "settings": mainMenu, 
                 "onecammatch": null, "multiview": multiviewMenu,   
