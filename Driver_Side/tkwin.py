@@ -106,7 +106,15 @@ class TkWin:
     Sends the Vision System start signal for a competition match
     """
     self.switchUi(competitioninterface)
-    sendStartSignal()
+
+  #Networking Functions
+  def sendStartSignal(self):
+    ip = self.getIp()
+    print(ip)
+    self.sock.sendto(ip.encode(), (piip, 5800))
+
+  def getIp(self):
+    return self.sock.getsockbyname()[0]
 
   #Widget Functions
   def addCamera(self, camnum, interface="match", rewidget=False):
@@ -388,6 +396,9 @@ class TkWin:
       for camera in self.cameras["match"]:
         self.cameras[interface].append(camera)
 
+  def sendConnectedMessage(self):
+    #This function may be overriden by a subclass if more/different devices need to be messaged
+    comsock.sendto(b"connected", (piip, 5800))
   def bindMethodNames(self):
       self.methodnames = {"runWin": self.runWin, "toggleFullscreen": self.toggleFullscreen, 
                 "activateFullscreen": self.activateFullscreen, "escapeFullscreen": self.escapeFullscreen, 
@@ -651,10 +662,6 @@ class MultiviewWindow(TkWin):
           setCamColor(camera, self.vars["color"])
       self.putToDash("color", self.vars["color"])
 
-  def sendConnectedMessage(self):
-    #This function may be overriden by a subclass if more/different devices need to be messaged
-    comsock.sendto(b"connected", (piip, 5800))
-
   #Function never worked before, and was therefore simplified
   def resetActivity(self, staged):
       return True
@@ -848,10 +855,6 @@ def processMenuHierarchy(toplevel, hierarchy, self):
           toplevel.add_command(label=itemname, command=fts.partial(item, self))
       else:
         toplevel.add_command(label=itemname, command=item)
-
-#Networking functions
-def sendStartSignal():
-  comsock.sendto(b"start", (piip, 5800))
 
 #Puts pi into configuration mode
 def configSystem():

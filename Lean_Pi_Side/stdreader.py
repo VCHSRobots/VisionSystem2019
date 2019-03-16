@@ -37,7 +37,7 @@ def scanForCam(cam, tree, manufacts):
   if dnum == -1:
     return False
   manufact = getDeviceManufacturer(dnum, manufacts)
-  if manufact == "045e":
+  if manufact == "045e" or manufact == "05a3":
     return True
   else:
     return False
