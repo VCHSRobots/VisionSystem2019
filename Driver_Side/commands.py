@@ -69,49 +69,6 @@ def turnOffUngridedCams(self):
 #Multiview Commands were migrated to tkwin
 
 #Splitcam functions were migrated to tkwin
-
-#The following four functions are unused, as they are better replaced by the switchCamNum methods on cameras themselves
-def switchCam(self, camnum):
-    """
-    Duplicate of TkWin.replaceWidget()
-    """
-    ungridStaged(self)
-    camera = self.cameras["match"][camnum]
-    self.gridWidget(camera, defaultlocation[0], defaultlocation[1], defaultlocation[2], defaultlocation[3])
-    self.vars["staged"] = [camnum]
-
-def getStagedCam(self):
-    """
-    Gets staged camera from networktables and responds accordingly
-    """
-    staged = visiontable.getNumber("activecam", 0)
-    if self.vars["staged"][0] != staged:
-        visiontable.putBoolean("{}isactive".format(staged), True)
-        switchCam(self, staged)
-
-def frontCam(self):
-    visiontable.putNumber("activecam", 0)
-    visiontable.putBoolean("0isactive", True)
-    switchCam(self, 0)
-
-def backCam(self):
-    visiontable.putNumber("activecam", 1)
-    visiontable.putBoolean("1isactive", True)
-    switchCam(self, 1)
-
-def leftCam(self):
-    visiontable.putNumber("activecam", 2)
-    visiontable.putBoolean("2isactive", True)
-    switchCam(self, 2)
-
-def rightCam(self):
-    visiontable.putNumber("activecam", 3)
-    visiontable.putBoolean("3isactive", True)
-    switchCam(self, 3)
-
-def saveImage(self):
-    for camnum in self.vars["staged"]:
-        self.cameras["match"][camnum].save = True
         
 #Universal Competition Functions
 def toggleBandwidth(self):
